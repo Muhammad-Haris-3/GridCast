@@ -60,6 +60,13 @@ def status() -> dict[str, Any]:
             "GRIDCAST_READONLY_DATABASE_URL so the API cannot write."
         )
 
+    if not settings.env_is_valid:
+        payload["warnings"].append(
+            "GRIDCAST_ENV does not look like an environment label and has been "
+            "suppressed. If a connection string was pasted into it, treat that "
+            "credential as exposed and rotate it."
+        )
+
     try:
         spine = fetch_one(
             """

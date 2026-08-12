@@ -40,6 +40,36 @@ def test_distinct_roles_are_accepted() -> None:
     assert settings.readonly_role_in_use is True
 
 
+@pytest.mark.parametrize(
+    "leaked",
+    [
+        "postgresql://gridcast_readonly:hunter2@ep-x-pooler.aws.neon.tech/neondb?sslmode=require",
+        "postgres://user:pw@host/db",
+        "some value with spaces",
+        "UPPERCASE",
+        "x" * 40,
+    ],
+)
+def test_env_never_echoes_something_that_is_not_a_label(leaked: str) -> None:
+    """/health is public and reports env verbatim.
+
+    A connection string pasted into GRIDCAST_ENV was published to the internet,
+    password included, during the first Render deployment. This is the
+    regression test for that.
+    """
+    settings = Settings(_env_file=None, env=leaked)
+    assert settings.env == "misconfigured"
+    assert "hunter2" not in settings.env
+    assert settings.env_is_valid is False
+
+
+@pytest.mark.parametrize("label", ["local", "production", "staging", "ci", "pr-42"])
+def test_env_accepts_real_labels(label: str) -> None:
+    settings = Settings(_env_file=None, env=label)
+    assert settings.env == label
+    assert settings.env_is_valid is True
+
+
 def test_build_id_uses_the_platform_commit_when_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

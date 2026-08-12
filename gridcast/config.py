@@ -9,9 +9,15 @@ exists to say so out loud rather than let it pass silently.
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# An environment label is a short word. Anything else — most importantly a
+# connection string pasted into the wrong variable — must never reach a response.
+ENV_LABEL = re.compile(r"^[a-z0-9][a-z0-9_-]{0,19}$")
 
 
 class Settings(BaseSettings):
@@ -40,6 +46,29 @@ class Settings(BaseSettings):
     # These defaults are placeholders and are marked as such wherever surfaced.
     maturity_hours: int = 24
     stability_hours: int = 6
+
+    @field_validator("env")
+    @classmethod
+    def _reject_anything_that_is_not_a_label(cls, value: str) -> str:
+        """Never echo an unexpected value in the env field.
+
+        /health and /v1/status are public and unauthenticated, and they report
+        `env` verbatim. A connection string pasted into GRIDCAST_ENV by mistake
+        would therefore be published to the internet, password included — which
+        happened once during the first Render deployment and is the reason this
+        validator exists.
+
+        Anything that is not a short lowercase label becomes "misconfigured".
+        Refusing to start would be worse: it would take the service down for a
+        cosmetic field, and the operator would lose the status page that tells
+        them what is wrong.
+        """
+        value = value.strip()
+        return value if ENV_LABEL.match(value) else "misconfigured"
+
+    @property
+    def env_is_valid(self) -> bool:
+        return self.env != "misconfigured"
 
     @property
     def build_id(self) -> str:
