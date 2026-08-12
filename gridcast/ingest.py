@@ -138,6 +138,13 @@ def main() -> int:
     else:
         names = list(DAILY)
 
+    # Say which database this is talking to. .env points at a local
+    # scratch database by default, and a command that silently answers
+    # from the wrong one looks exactly like an answer — which is how the
+    # M2 audit reported findings from 239 local rows instead of 144,763.
+    from gridcast.config import get_settings as _s
+
+    print(f"database: {_s().database_url.split('@')[-1].split('?')[0] or 'NOT CONFIGURED'}")
     run_id = uuid.uuid4()
     print(f"run {run_id} | {window_from:%Y-%m-%d %H:%M} to {window_to:%Y-%m-%d %H:%M} UTC")
 
