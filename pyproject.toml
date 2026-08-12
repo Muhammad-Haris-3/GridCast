@@ -23,6 +23,14 @@ select = ["E", "F", "I", "UP", "B", "SIM", "DTZ"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
+
+# Put the repository root on sys.path.
+#
+# `python -m pytest` adds the working directory automatically; the `pytest`
+# console script does not. Without this the suite passes locally and fails in
+# CI with ModuleNotFoundError, having never imported the project at all — which
+# is worse than failing, because the green ticks meant nothing.
+pythonpath = ["."]
 markers = [
     "db: requires a live Postgres connection (set GRIDCAST_DATABASE_URL)",
 ]
