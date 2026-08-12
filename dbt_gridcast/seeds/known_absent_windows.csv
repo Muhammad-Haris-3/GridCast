@@ -1,0 +1,6 @@
+window_from_utc,window_to_utc,periods,source,reason,verified_on
+2021-04-19T17:00:00Z,2021-04-19T17:30:00Z,1,ci_intensity,Upstream outage. Re-requested directly from the API; the response returns rows either side and nothing within.,2026-08-12
+2021-04-19T22:00:00Z,2021-04-19T23:00:00Z,2,ci_intensity,Upstream outage. Re-requested directly from the API; the response returns rows either side and nothing within.,2026-08-12
+2021-12-26T15:00:00Z,2021-12-27T18:00:00Z,54,ci_intensity,Upstream outage over the 2021 Christmas period. Verified absent at source.,2026-08-12
+2023-10-20T22:00:00Z,2023-10-22T19:30:00Z,91,ci_intensity,Upstream outage. The API response jumps from 2023-10-20T21:30Z straight to 2023-10-22T19:30Z.,2026-08-12
+2024-06-11T23:00:00Z,2024-06-12T14:30:00Z,31,ci_intensity,Upstream outage. Verified absent at source.,2026-08-12

@@ -32,6 +32,12 @@ data/
 *.csv
 *.parquet
 
+# ...except dbt seeds, which are project source rather than data. *.csv quietly
+# excluded known_absent_windows.csv, so every local build passed against a file
+# CI never received and the warehouse failed there with "depends on a node named
+# 'known_absent_windows' which was not found".
+!dbt_gridcast/seeds/*.csv
+
 # OS
 .DS_Store
 Thumbs.db
