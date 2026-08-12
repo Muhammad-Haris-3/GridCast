@@ -28,7 +28,7 @@ def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "env": settings.env,
-        "commit": settings.commit,
+        "commit": settings.build_id,
         "time_utc": datetime.now(UTC).isoformat(),
     }
 
@@ -45,7 +45,7 @@ def status() -> dict[str, Any]:
 
     payload: dict[str, Any] = {
         "env": settings.env,
-        "commit": settings.commit,
+        "commit": settings.build_id,
         "milestone": "M0 — walking skeleton",
         "database": "unreachable",
         "readonly_role_in_use": settings.readonly_role_in_use,

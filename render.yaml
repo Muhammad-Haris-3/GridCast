@@ -18,11 +18,11 @@ services:
         value: "3.13.1"
       - key: GRIDCAST_ENV
         value: production
-      - key: GRIDCAST_COMMIT
-        fromService:
-          type: web
-          name: gridcast-api
-          property: commitId
+      # GRIDCAST_COMMIT is deliberately not set here. Render injects
+      # RENDER_GIT_COMMIT automatically, and gridcast.config falls back to it —
+      # fromService only supports host/port/hostport/connectionString, so a
+      # commit-id lookup would fail blueprint validation rather than resolve.
+      #
       # Set in the Render dashboard, never here:
       #   GRIDCAST_READONLY_DATABASE_URL — the gridcast_readonly Neon role.
       # The pipeline URL is deliberately NOT available to this service. If the

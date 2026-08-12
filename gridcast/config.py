@@ -8,6 +8,7 @@ exists to say so out loud rather than let it pass silently.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,7 +25,12 @@ class Settings(BaseSettings):
     database_url: str = ""
     readonly_database_url: str = ""
     env: str = "local"
-    commit: str = "local"
+
+    # Left empty so the platform's own build identifier can fill it in. Render
+    # injects RENDER_GIT_COMMIT and Vercel injects VERCEL_GIT_COMMIT_SHA; see
+    # build_id below. Defaulting this to "local" would mean a production
+    # deployment quietly reporting itself as local.
+    commit: str = ""
 
     # Design doc 6.2: the incremental lookback is a variable, not a literal,
     # so M2's measurement of the revision tail can change it without a code edit.
@@ -34,6 +40,22 @@ class Settings(BaseSettings):
     # These defaults are placeholders and are marked as such wherever surfaced.
     maturity_hours: int = 24
     stability_hours: int = 6
+
+    @property
+    def build_id(self) -> str:
+        """The commit this instance is running, whoever deployed it.
+
+        Explicit configuration wins; otherwise the hosting platform's own
+        injected variable is used. Reported by /health and /v1/status, so a
+        deployed page can be traced back to the exact code behind it.
+        """
+        return (
+            self.commit
+            or os.environ.get("RENDER_GIT_COMMIT")
+            or os.environ.get("VERCEL_GIT_COMMIT_SHA")
+            or os.environ.get("GITHUB_SHA")
+            or "local"
+        )
 
     @property
     def serving_url(self) -> str:

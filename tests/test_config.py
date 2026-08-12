@@ -40,6 +40,33 @@ def test_distinct_roles_are_accepted() -> None:
     assert settings.readonly_role_in_use is True
 
 
+def test_build_id_uses_the_platform_commit_when_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A deployed instance must not report itself as 'local'.
+
+    Render injects RENDER_GIT_COMMIT; render.yaml cannot pass it through
+    declaratively, because fromService only resolves host/port/connectionString.
+    """
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc123def456")
+    settings = Settings(_env_file=None)
+    assert settings.build_id == "abc123def456"
+
+
+def test_build_id_prefers_explicit_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc123def456")
+    settings = Settings(_env_file=None, commit="explicit-value")
+    assert settings.build_id == "explicit-value"
+
+
+def test_build_id_falls_back_to_local(monkeypatch: pytest.MonkeyPatch) -> None:
+    for var in ("RENDER_GIT_COMMIT", "VERCEL_GIT_COMMIT_SHA", "GITHUB_SHA"):
+        monkeypatch.delenv(var, raising=False)
+    assert Settings(_env_file=None).build_id == "local"
+
+
 def test_missing_readonly_url_falls_back_but_is_reported() -> None:
     """Local convenience, but /v1/status must confess it."""
     settings = Settings(_env_file=None, database_url="postgresql://app:p@host/db")
