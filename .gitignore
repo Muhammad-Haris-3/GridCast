@@ -49,3 +49,4 @@ pytest-output.txt
 # A stray nested git repo lived here from an early upload attempt; the
 # renamed remains are ignored so they never get committed. Safe to delete.
 gridcast/.git.disabled-nested-repo/
+dbt-output.txt

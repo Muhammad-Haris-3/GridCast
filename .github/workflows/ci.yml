@@ -68,7 +68,21 @@ jobs:
 
       - name: Build warehouse
         working-directory: dbt_gridcast
-        run: dbt build --profiles-dir .
+        run: |
+          set -o pipefail
+          dbt build --profiles-dir . 2>&1 | tee dbt-output.txt
+
+      # Same reasoning as the test step: GitHub requires sign-in to read job
+      # logs even on a public repository, and annotations do not. Covering only
+      # the test step first time round meant a dbt failure was opaque from
+      # outside, which is exactly the situation this was built to avoid.
+      - name: Surface the warehouse failure
+        if: failure()
+        working-directory: dbt_gridcast
+        run: |
+          DETAIL=$(grep -E "Error|Failure|FAIL [0-9]|Compilation|Database Error" -A 6 dbt-output.txt \
+            | tail -60 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          echo "::error title=dbt build failed::$DETAIL"
 
       - name: Tests, including the append-only guarantees
         run: |
