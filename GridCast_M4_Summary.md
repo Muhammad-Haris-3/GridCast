@@ -2,7 +2,7 @@
 
 **Milestone:** M4
 **Date:** 2026-08-12
-**Status:** Complete. 1,313,678 scored forecast points across seven years.
+**Status:** Complete for the harness and baselines. D-3 was reported resolved and is not — see §6.
 
 ---
 
@@ -154,36 +154,66 @@ because "the test failed so the code is broken" is the wrong reflex.
 
 ---
 
-## 6. D-3 resolved: five locations, not six
+## 6. D-3 is NOT resolved, and an earlier version of this document said it was
 
-The rule was fixed in `audit/E01` before any number was seen — keep a location
-whose correlation with national wind share exceeds 0.5.
+This section originally reported D-3 as settled and `scotland_north` as dropped.
+That conclusion was wrong, and the way it went wrong is worth more than the
+conclusion would have been.
 
-| Location | corr(wind speed, wind share) | corr(radiation, solar share) |
-|---|---|---|
-| irish_sea | 0.726 | 0.866 |
-| north_sea | 0.716 | 0.878 |
-| midlands | 0.715 | 0.913 |
-| scotland_south | 0.652 | 0.836 |
-| south_coast | 0.589 | 0.908 |
-| **scotland_north** | **0.460** | 0.805 |
+**The correlations were computed on 44% of the history.** `lnd_om_vintage`
+covers 2018-05-09 to 2021-12-19 only — 3.6 years of 8.25. The backfill had died
+partway through, and `landing.run_log` recorded exactly why:
 
-No pair of locations correlated above 0.85 with each other, so the redundancy
-rule never fired — only the floor did.
+```
+om_vintage | ingest | failed | rows_read 200,880 | rows_written 193,604
+DiskFull: could not extend file because project size limit (512 MB) has been exceeded
+```
 
-**`scotland_north` is dropped from the feature set.** It is the least useful
-despite being the northernmost, and the least windy at 22.9 km/h mean. 57.5°N
-−4.0°W is inland Highlands: Open-Meteo models the mountain interior, while GB
-onshore wind capacity sits on coasts and ridgelines. The point measures the
-wrong Scotland.
+Three failures compounded:
 
-It keeps being ingested — the series is the evidence for this decision and costs
-little — but `EXCLUDED_FROM_FEATURES` keeps it out of the models.
+1. The ingest hit Neon's storage ceiling and stopped.
+2. The shell wrapper that ran it ended with `echo "### DONE"`, so the block
+   exited 0 and masked the CLI's non-zero status.
+3. The correlation query returned 61,105 observations per location — plausible
+   enough that nobody asked why it was not 144,000.
 
-Solar radiation correlates 0.81–0.91 with solar share everywhere, which is a
-useful sanity check that the weather join is aligned correctly.
+The run log did its job. It recorded the failure, with the error class and the
+message, at the moment it happened. It was simply never read — which is a worse
+failure than not having built it, because the information existed and the
+decision was made anyway.
 
----
+**The figures, valid only for 2018-2021:**
+
+| Location | corr(wind speed, wind share) |
+|---|---|
+| irish_sea | 0.726 |
+| north_sea | 0.716 |
+| midlands | 0.715 |
+| scotland_south | 0.652 |
+| south_coast | 0.589 |
+| scotland_north | 0.460 |
+
+They cannot carry the decision. Mean intensity across that window was 180-236
+gCO2/kWh against roughly 125 today, and the generation mix that produced these
+correlations is not the mix being forecast now. Using them would be fitting a
+feature set to a grid that no longer exists — the same drift argument that
+disqualified `intensity.index` at M2.
+
+`EXCLUDED_FROM_FEATURES` is now empty. No location is dropped until the backfill
+completes and E01 is re-run over the full period.
+
+### 6.1 Completing it needs storage that does not currently exist
+
+The remaining 2021-12 to 2026-08 is roughly 242,000 more landing rows, about
+104 MB, plus the same again doubled in `fct_weather_period` because that model
+stores one row per settlement period rather than per hour. Against 92 MB free,
+it does not fit.
+
+The cheapest fix is the one already applied to the generation mix at M3:
+materialise `fct_weather_period` as a view rather than a table. It doubles every
+hourly row into two settlement periods purely for join convenience, which is the
+same "storing a shape that is only consumed in another shape" habit that cost
+115 MB last milestone.
 
 ## 7. Where backtest results live
 
