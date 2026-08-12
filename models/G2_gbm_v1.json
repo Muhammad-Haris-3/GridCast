@@ -1,0 +1,81 @@
+{
+  "model_version": "G2_gbm_v1",
+  "family": "hist_gradient_boosting",
+  "trained_at_utc": "2026-08-12T20:11:09.532430+00:00",
+  "train_from": "2023-01-01T00:00:00+00:00",
+  "train_to": "2026-01-01T00:00:00+00:00",
+  "embargo_hours": 24.0,
+  "features": [
+    "sin_period_of_day",
+    "cos_period_of_day",
+    "sin_day_of_year",
+    "cos_day_of_year",
+    "day_of_week",
+    "is_weekend",
+    "horizon_periods",
+    "intensity_lag_0h",
+    "intensity_lag_24h",
+    "intensity_lag_48h",
+    "intensity_lag_168h",
+    "intensity_mean_24h",
+    "intensity_std_24h",
+    "intensity_mean_168h",
+    "intensity_std_168h",
+    "mix_wind_perc_at_issue",
+    "mix_solar_perc_at_issue",
+    "mix_low_carbon_perc_at_issue",
+    "mix_wind_mean_24h",
+    "shortwave_radiation_wm2__irish_sea",
+    "shortwave_radiation_wm2__midlands",
+    "shortwave_radiation_wm2__north_sea",
+    "shortwave_radiation_wm2__scotland_south",
+    "shortwave_radiation_wm2__south_coast",
+    "temperature_2m_c__irish_sea",
+    "temperature_2m_c__midlands",
+    "temperature_2m_c__north_sea",
+    "temperature_2m_c__scotland_south",
+    "temperature_2m_c__south_coast",
+    "wind_speed_100m_kmh__irish_sea",
+    "wind_speed_100m_kmh__midlands",
+    "wind_speed_100m_kmh__north_sea",
+    "wind_speed_100m_kmh__scotland_south",
+    "wind_speed_100m_kmh__south_coast",
+    "ramp_wind_speed_100m_kmh__irish_sea",
+    "ramp_wind_speed_100m_kmh__midlands",
+    "ramp_wind_speed_100m_kmh__north_sea",
+    "ramp_wind_speed_100m_kmh__scotland_south",
+    "ramp_wind_speed_100m_kmh__south_coast"
+  ],
+  "mase_scale": 41.51528954457793,
+  "uses_eso_forecast": false,
+  "holdout": {
+    "H1": {
+      "n": 2652,
+      "mae": 19.1052796098888,
+      "rmse": 24.81701416836912,
+      "bias": -0.7664563284938197,
+      "mase": 0.46019863571887404
+    },
+    "H2": {
+      "n": 7956,
+      "mae": 21.94265099246323,
+      "rmse": 27.758190984936117,
+      "bias": 0.6344474845568836,
+      "mase": 0.5285438505469614
+    },
+    "H3": {
+      "n": 10608,
+      "mae": 21.740649578855855,
+      "rmse": 27.682376919120877,
+      "bias": -0.07050730300389957,
+      "mase": 0.5236781392434073
+    },
+    "H4": {
+      "n": 21216,
+      "mae": 22.714556244925284,
+      "rmse": 28.454104962341475,
+      "bias": 0.44807946944557264,
+      "mase": 0.5471371269260941
+    }
+  }
+}

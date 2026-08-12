@@ -197,3 +197,134 @@ def test_every_baseline_respects_an_embargo() -> None:
         assert (
             predicted <= 2000 - embargo_periods
         ).all(), f"{name} used data inside the embargo window"
+
+
+# ---------------------------------------------------------------------------
+# The feature builder
+# ---------------------------------------------------------------------------
+
+
+def _feature_inputs(periods: int = 4000):
+    """Intensity/mix/weather frames whose values name their own period."""
+    import pandas as pd
+
+    index = pd.DatetimeIndex([START + i * PERIOD for i in range(periods)])
+    intensity = pd.DataFrame(
+        {
+            "actual_gco2_kwh": range(periods),
+            # Knowable one hour after the period ends, so the guard has
+            # something real to enforce rather than a trivially-true column.
+            "knowable_at_utc": [t + timedelta(hours=1) for t in index],
+        },
+        index=index,
+    ).astype({"actual_gco2_kwh": float})
+    mix = pd.DataFrame(
+        {
+            "wind_perc": range(periods),
+            "solar_perc": range(periods),
+            "low_carbon_perc": range(periods),
+        },
+        index=index,
+    ).astype(float)
+    weather = pd.DataFrame({"wind_speed_100m_kmh__north_sea": range(periods)}, index=index).astype(
+        float
+    )
+    return intensity, mix, weather
+
+
+def test_features_never_use_intensity_from_after_the_issue_time() -> None:
+    """The failure that would make every backtest meaningless.
+
+    Every intensity feature is a lag measured back from the issue time. If any
+    of them could reach a target-relative period, a 48-hour forecast would be
+    built on data from 24 hours into its own future.
+    """
+    from gridcast.features import build_features
+
+    intensity, mix, weather = _feature_inputs()
+    anchor = at(2000)
+    run_at = anchor + timedelta(hours=2)  # knowability lags the period by 1h
+    targets = pd.DatetimeIndex([anchor + h * PERIOD for h in range(1, 97)])
+
+    frame = build_features(
+        run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
+    )
+
+    lag_columns = [c for c in frame.columns if c.startswith("intensity_lag_")]
+    assert lag_columns, "no intensity lags were built"
+    for column in lag_columns:
+        assert (
+            frame[column] <= 2000
+        ).all(), f"{column} reached period {frame[column].max():.0f} from an anchor at 2000"
+
+
+def test_features_respect_the_knowability_column_not_just_the_period() -> None:
+    """A period can have happened and still not be knowable.
+
+    Actuals are published on a lag. Filtering only on 'period <= issue time'
+    would use values that had occurred but had not yet been released — which is
+    exactly the leak the M2 publication-lag measurement exists to prevent.
+    """
+    from gridcast.features import build_features
+
+    intensity, mix, weather = _feature_inputs()
+    anchor = at(2000)
+    # Issue time is the anchor itself, so the last few periods have occurred
+    # but their actuals are not knowable for another hour.
+    run_at = anchor
+    targets = pd.DatetimeIndex([anchor + h * PERIOD for h in range(1, 97)])
+
+    frame = build_features(
+        run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
+    )
+
+    # Only periods knowable by run_at may be used: period p is knowable at
+    # p + 1h, so the newest usable period is two before the anchor.
+    assert frame["intensity_lag_0h"].max() <= 1998
+
+
+def test_feature_builder_refuses_a_banned_column() -> None:
+    """The target and the ESO forecast are not features."""
+    from gridcast.features import assert_no_banned_columns
+
+    with pytest.raises(LeakageError, match="banned column"):
+        assert_no_banned_columns(pd.DataFrame({"actual_gco2_kwh": [1.0]}))
+
+    with pytest.raises(LeakageError, match="banned column"):
+        assert_no_banned_columns(pd.DataFrame({"eso_forecast_gco2_kwh": [1.0]}))
+
+
+def test_feature_builder_raises_when_nothing_is_observable() -> None:
+    from gridcast.features import build_features
+
+    intensity, mix, weather = _feature_inputs()
+    early = START - timedelta(days=1)
+    with pytest.raises(LeakageError, match="no intensity observable"):
+        build_features(
+            early,
+            pd.DatetimeIndex([START]),
+            intensity=intensity,
+            mix=mix,
+            weather=weather,
+            anchor=early,
+        )
+
+
+def test_horizon_is_a_feature_and_counts_from_the_anchor() -> None:
+    """Direct multi-horizon: one model, 96 horizons, horizon as an input."""
+    from gridcast.features import build_features
+
+    intensity, mix, weather = _feature_inputs()
+    anchor = at(2000)
+    targets = pd.DatetimeIndex([anchor + h * PERIOD for h in range(1, 97)])
+
+    frame = build_features(
+        anchor + timedelta(hours=2),
+        targets,
+        intensity=intensity,
+        mix=mix,
+        weather=weather,
+        anchor=anchor,
+    )
+
+    assert frame["horizon_periods"].tolist() == list(range(1, 97))
