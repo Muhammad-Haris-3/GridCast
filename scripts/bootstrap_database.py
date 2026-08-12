@@ -91,8 +91,17 @@ def main() -> int:
         default=None,
         help="Password for gridcast_readonly. Generated if omitted.",
     )
+    parser.add_argument(
+        "--rotate-password",
+        action="store_true",
+        help="Generate a new password even if gridcast_readonly already has one. "
+        "This invalidates the URL currently deployed to Render.",
+    )
     parser.add_argument("--skip-dbt", action="store_true", help="Skip the warehouse build")
     args = parser.parse_args()
+
+    if args.rotate_password and args.readonly_password is None:
+        args.readonly_password = secrets.token_urlsafe(24)
 
     url = args.database_url.strip().strip('"').strip("'")
     ro_password = args.readonly_password or secrets.token_urlsafe(24)
@@ -140,14 +149,30 @@ def main() -> int:
 
     # ---------------------------------------------------------------- step 3
     step(3, "Give gridcast_readonly a login")
+    password_is_known = True
     try:
         with psycopg.connect(url, autocommit=True) as conn, conn.cursor() as cur:
-            cur.execute(
-                sql.SQL("ALTER ROLE gridcast_readonly WITH LOGIN PASSWORD {}").format(
-                    sql.Literal(ro_password)
+            cur.execute("SELECT rolcanlogin FROM pg_roles WHERE rolname = 'gridcast_readonly'")
+            row = cur.fetchone()
+            already_has_login = bool(row and row[0])
+
+            # Re-running this script must not silently rotate a password that is
+            # already deployed to Render. Doing so would break production at a
+            # moment when the operator believes they are re-verifying it.
+            if already_has_login and args.readonly_password is None:
+                password_is_known = False
+                warn("gridcast_readonly already has a login; password left unchanged")
+                print(
+                    f"       {DIM}Pass --readonly-password to set a specific one, or "
+                    f"--rotate-password to generate a new one.{RESET}"
                 )
-            )
-        ok("gridcast_readonly can now log in")
+            else:
+                cur.execute(
+                    sql.SQL("ALTER ROLE gridcast_readonly WITH LOGIN PASSWORD {}").format(
+                        sql.Literal(ro_password)
+                    )
+                )
+                ok("gridcast_readonly can now log in")
     except Exception as exc:
         fail(f"{type(exc).__name__}: {exc}")
         return 1
@@ -218,6 +243,19 @@ def main() -> int:
         cur.execute("SELECT count(*) FROM marts.dim_settlement_period")
         periods = cur.fetchone()[0]
         (ok if periods > 100_000 else warn)(f"spine periods = {periods:,}")
+
+    if not password_is_known:
+        warn("skipping read-only checks: this run did not set the password, so it cannot log in")
+        print(
+            f"       {DIM}Re-run with --readonly-password <the deployed one> to "
+            f"verify the read-only role end to end.{RESET}"
+        )
+        print(f"\n{'=' * 70}\n{GREEN}DATABASE READY{RESET}\n{'=' * 70}")
+        print("\nThe read-only role already exists. Its connection string is:\n")
+        print(
+            f"  {swap_credentials(url, 'gridcast_readonly', '<EXISTING-PASSWORD>', pooled=True)}\n"
+        )
+        return 0
 
     try:
         with psycopg.connect(ro_url, connect_timeout=30) as conn, conn.cursor() as cur:
