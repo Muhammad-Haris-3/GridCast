@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: stg_ci_intensity
+    description: >
+      National carbon intensity, one row per settlement period. `index` is
+      deliberately absent — M2 findings B03/B04 showed the ESO recalibrates its
+      band thresholds annually, so the label encodes the publication year as
+      much as the intensity.
+    columns:
+      - name: sp_start_utc
+        tests: [unique, not_null]
+      - name: eso_forecast_gco2_kwh
+        description: >
+          Nullable. 43 periods in two 2025 blocks carry no ESO forecast, and
+          those periods must be excluded from the benchmark comparison for every
+          model, not only for the ESO (FR-20).
+      - name: knowable_at_utc
+        tests: [not_null]
+      - name: revision_count
+        tests: [not_null]
+
+  - name: stg_ci_genmix
+    description: Generation mix unnested to one row per fuel.
+    columns:
+      - name: fuel
+        tests:
+          - not_null
+          - accepted_values:
+              values: [biomass, coal, gas, hydro, imports, nuclear, other, solar, wind]
+      - name: perc
+        tests: [not_null]
+
+  - name: stg_ci_regional
+    description: >
+      Regional intensity. Carries a forecast and NO actual column — not a
+      nullable one. The absence is structural so that no downstream join can
+      produce an all-null accuracy table that looks like a bug rather than a
+      property of the data.
+    columns:
+      - name: region_id
+        tests: [not_null]
+      - name: is_scoreable
+        tests:
+          - accepted_values:
+              values: [false]
+              quote: false
+
+  - name: stg_ex_demand
+    description: >
+      Demand outturn with vintage in the grain. The one staging model that does
+      not resolve to a current value, because point-in-time features need what
+      was believed at a past instant.
+    columns:
+      - name: sp_start_utc
+        tests: [not_null]
+      - name: publish_time_utc
+        tests: [not_null]
+
+  - name: stg_ex_price
+    columns:
+      - name: data_provider
+        tests: [not_null]
+
+  - name: stg_om_archive
+    description: >
+      Reanalysis actuals. DESCRIPTIVE USE ONLY — never a training feature,
+      enforced by the lineage test assert_features_never_use_archive_weather.
+
+  - name: stg_om_forecast
+    description: The forward forecast the live system genuinely holds at issue time.
+
+  - name: stg_om_vintage
+    description: Past forecasts as issued. The leakage-safe training source.

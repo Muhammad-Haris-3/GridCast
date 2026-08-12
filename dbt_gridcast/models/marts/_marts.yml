@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: fct_intensity_period
+    description: >
+      One row per national settlement period. Incremental with a deliberate
+      lookback window, because actuals arrive late and a naive incremental model
+      would freeze every pending period as permanently missing.
+    columns:
+      - name: sp_start_utc
+        tests: [unique, not_null]
+      - name: is_matured
+        tests: [not_null]
+      - name: is_permanently_unscoreable
+        description: >
+          A matured period with no actual is not pending — it is permanently
+          unscoreable. 625 such periods exist, concentrated in 2019. The scoring
+          job must retire them rather than wait for ever.
+        tests: [not_null]
+      - name: eso_benchmark_missing
+        description: >
+          43 periods carry no ESO forecast. FR-20 requires identical periods
+          across models, so these must be excluded for ALL models, not only the
+          ESO — otherwise GridCast is credited with periods its benchmark never
+          had the chance to attempt.
+        tests: [not_null]
+
+  - name: fct_generation_mix
+    columns:
+      - name: mix_key
+        tests: [unique, not_null]
+      - name: fuel
+        tests: [not_null]
+
+  - name: fct_mix_wide
+    columns:
+      - name: sp_start_utc
+        tests: [unique, not_null]
+
+  - name: fct_demand_period
+    columns:
+      - name: demand_key
+        tests: [unique, not_null]
+      - name: demand_indo_mw
+        description: Initial national demand outturn. Nullable at the forward edge.
+
+  - name: fct_demand_current
+    description: >
+      Latest vintage per period. DESCRIPTIVE USE ONLY — using this in a feature
+      builder asks what demand turned out to be rather than what was believed at
+      issue time, which is leakage.
+    columns:
+      - name: sp_start_utc
+        tests: [unique, not_null]
+
+  - name: fct_weather_period
+    columns:
+      - name: weather_key
+        tests: [unique, not_null]
+
+  - name: dim_region
+    columns:
+      - name: region_id
+        tests: [unique, not_null]
+      - name: is_scoreable
+        tests:
+          - accepted_values:
+              values: [false]
+              quote: false
+
+  - name: mart_absent_periods
+    description: >
+      Settlement periods verified absent at source. Without this the daily
+      deep-heal re-requests five windows every night, for ever, against a free
+      public API.
+    columns:
+      - name: sp_start_utc
+        tests: [unique, not_null]

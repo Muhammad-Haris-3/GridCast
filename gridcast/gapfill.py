@@ -57,11 +57,23 @@ def find_gaps(spec: SourceSpec, *, lookback: timedelta, grace: timedelta = GRACE
                SELECT 1 FROM {schema}.{table} l
                 WHERE l.sp_start_utc = d.sp_start_utc
                )
+           -- Periods verified absent at source are not gaps and must not be
+           -- refetched. M2 finding A02 confirmed 179 periods across five
+           -- windows never existed upstream; without this exclusion the daily
+           -- deep-heal re-requests all five every night, for ever, against a
+           -- free public API with no terminating condition. That would be an
+           -- impolite loop, and it would be GridCast's fault rather than the
+           -- ESO's.
+           AND NOT EXISTS (
+               SELECT 1 FROM marts.mart_absent_periods a
+                WHERE a.sp_start_utc = d.sp_start_utc
+                  AND a.source = %s
+               )
          ORDER BY d.sp_start_utc
     """).format(schema=sql.Identifier(schema), table=sql.Identifier(table))
 
     with connect() as conn, conn.cursor() as cur:
-        cur.execute(statement, (now - lookback, now - grace))
+        cur.execute(statement, (now - lookback, now - grace, spec.name))
         return [row["sp_start_utc"] for row in cur.fetchall()]
 
 

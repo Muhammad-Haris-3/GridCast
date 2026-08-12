@@ -7,6 +7,8 @@ profile: gridcast
 model-paths: ["models"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
@@ -14,6 +16,19 @@ vars:
   # Design doc 6.2: the incremental lookback is a variable, not a literal, so
   # M2's measurement of the revision tail changes it without a code edit.
   lookback_days: 14
+
+  # Design doc 6.2.1 (D-1). PROVISIONAL. M2 measured the demand publication lag
+  # at 30 minutes flat through p99, but could not measure the ESO actuals lag:
+  # every backfilled row carries the backfill's fetch time, so asking when its
+  # actuals appeared answers "all of them, today". That lag must be observed
+  # forward, and M5 must not open its scoreboard before it has been.
+  maturity_hours: 24
+  stability_hours: 6
+
+  # Design doc 6.5 (D-2). PROVISIONAL, pending the weather backfill.
+  # step_hold invents nothing; linear interpolation manufactures a value nobody
+  # published. Decided by measured backtest error, not by preference.
+  weather_alignment: step_hold
 
   # The spine starts the day before the earliest observed data. Verified
   # 2026-08-12: /intensity/date/2018-05-10 returns populated forecast/actual

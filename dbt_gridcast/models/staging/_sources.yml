@@ -1,0 +1,31 @@
+version: 2
+
+sources:
+  - name: landing
+    schema: landing
+    description: >
+      Append-only raw API payloads, written by Python. A row lands only when its
+      payload differs from the last one stored for that key, so idempotency and
+      revision history come from the same mechanism.
+    tables:
+      - name: lnd_ci_intensity
+      - name: lnd_ci_genmix
+      - name: lnd_ci_regional
+      - name: lnd_ex_demand
+      - name: lnd_ex_price
+      - name: lnd_om_archive
+      - name: lnd_om_forecast
+      - name: lnd_om_vintage
+      - name: run_log
+
+  - name: register
+    schema: register
+    description: >
+      The forecast register. Declared as a source and never as a model: a
+      forecast is evidence of what was believed at a moment in time, and
+      anything dbt can rebuild is not evidence. dbt may read it; dbt may never
+      write it.
+    tables:
+      - name: reg_forecast_point
+      - name: reg_forecast_score
+      - name: reg_forecast_seal
