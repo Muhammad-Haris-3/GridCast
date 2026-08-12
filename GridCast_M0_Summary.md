@@ -2,7 +2,14 @@
 
 **Milestone:** M0
 **Date:** 2026-08-12
-**Status:** Complete, locally verified. Cloud deployment pending account setup (§6).
+**Status:** **Complete and verified in production.**
+
+| Surface | URL |
+|---|---|
+| Application | https://grid-cast-sigma.vercel.app |
+| API | https://gridcast-api-xhca.onrender.com |
+| Repository | https://github.com/Muhammad-Haris-3/GridCast |
+| Warehouse | Neon, AWS `us-east-2`, PostgreSQL 18.4 |
 
 ---
 
@@ -161,24 +168,84 @@ already asserted by the singular test `assert_periods_per_local_day`.
 
 ---
 
-## 6. What remains for M0 to be complete in production
+## 6. Production verification
 
-These need account credentials and cannot be done from this environment:
+All six deployment steps are complete. Confirmed live at
+https://grid-cast-sigma.vercel.app/status:
 
-1. Create the GitHub repository (public — required for unlimited Actions minutes)
-   and push.
-2. Create a **dedicated Neon project** — separate from any other project's
-   database — and run `python -m gridcast.migrate` against it.
-3. Create the `gridcast_readonly` login role in Neon and give **only** that
-   connection string to Render.
-4. Deploy the API to Render from `render.yaml`; confirm `/health` returns 200.
-5. Deploy `web/` to Vercel with `NEXT_PUBLIC_API_BASE_URL` set to the Render URL.
-6. Confirm the deployed `/status` page shows `database: ok` and
-   `readonly_role_in_use: true`.
+| Check | Result |
+|---|---|
+| Database | `ok` |
+| Read-only serving role | `IN USE` |
+| Spine periods | 147,696 |
+| Spine first period | `2018-05-09 00:00Z` |
+| Build | `fec76b17ecaa` — a real commit, not `local` |
+| API `/health` | 200 |
 
-Until step 6 is green, **M0 is not done** — a green local run is not a deployment,
-and this project's own Definition of Done (SRS §4.2) requires production
-verification, not a successful merge.
+The Definition of Done (SRS §4.2) required production verification rather than a
+successful merge. That bar is now met.
+
+### 6.1 Findings from the deployment itself
+
+Four further problems, found only because the deployment was actually performed
+rather than assumed to work.
+
+**6.1.1 CI had never once imported the project.** Every run since the repository
+was created had failed with `ModuleNotFoundError` for both `gridcast` and `api`.
+The cause was the invocation: `python -m pytest`, used locally, puts the working
+directory on `sys.path`; the `pytest` console script that CI runs does not. Two
+of four test modules failed at collection, so the only assertions ever executed
+in CI were the register tests — and the suite had never imported the code it
+claims to verify. Fixed with `pythonpath` in the pytest configuration, which
+works under both invocations rather than papering over it in the workflow.
+
+The same class of bug was then checked on the deployment path, since Render
+starts the API with the `uvicorn` console script. It does not apply: uvicorn
+inserts its `--app-dir` (default `.`) into `sys.path`. Verified by running that
+exact command and getting 200 from `/health`.
+
+**6.1.2 A public endpoint served a database password.** During the first Render
+deployment the read-only connection string was pasted into `GRIDCAST_ENV`
+instead of `GRIDCAST_READONLY_DATABASE_URL`. `/health` reports `env` verbatim
+and is public and unauthenticated, so the credential — password included — was
+served on the open internet until the variable was corrected.
+
+The operator error is ordinary and will recur. Publishing the result of it was
+the defect, and it belonged to the application. `env` is now validated as a
+short lowercase label and replaced with `misconfigured` if it is anything else,
+so a value never intended to be public cannot reach a response; `/v1/status`
+raises a warning stating that any credential pasted there must be treated as
+exposed. The affected password was rotated.
+
+Rejecting the value at startup was considered and refused: it would take the
+service down over a cosmetic field and remove the very status page that explains
+what is wrong.
+
+**6.1.3 A false failure in the bootstrap script.** The timezone check compared
+the zone *name* to `UTC` and failed against Neon, which reports the identical
+zero-offset zone as `GMT`. Widening it to accept both names would have admitted
+`Europe/London`, which is also zero-offset in January and then shifts an hour in
+July. The check now probes the zone at two instants six months apart and
+requires zero offset at both — verified to accept `UTC` and `GMT` and to reject
+`Europe/London` and `Asia/Karachi`.
+
+**6.1.4 Re-running the bootstrap script rotated a deployed password.** Anyone
+re-running it to re-verify a database would have broken the live credential at
+the moment they believed they were confirming things worked. It now leaves an
+existing login untouched unless `--readonly-password` or `--rotate-password` is
+given, and reports the read-only checks as *skipped* rather than passing them
+when it cannot log in.
+
+### 6.2 Environment corrections
+
+- Render region moved to Ohio to sit beside the Neon project in `us-east-2`.
+  Every request the API serves is a database round trip; splitting them across
+  the Atlantic would have added one to each, on an instance already cold-starting.
+- CI Postgres moved from 16 to 18 to match the Neon server (18.4).
+- CI failures now publish into a GitHub annotation. GitHub requires sign-in to
+  read job logs even on a public repository, but annotations are readable
+  anonymously — so a build failure is diagnosable without an account, which is
+  the same principle the forecast seals run on. This is how 6.1.1 was found.
 
 ---
 

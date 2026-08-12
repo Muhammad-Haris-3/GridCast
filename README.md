@@ -72,14 +72,26 @@ container, and it is also simply the correct production pattern.
 
 ---
 
+## Live
+
+| Surface | URL |
+|---|---|
+| Application | https://grid-cast-sigma.vercel.app |
+| Pipeline status | https://grid-cast-sigma.vercel.app/status |
+| API | https://gridcast-api-xhca.onrender.com |
+
+The API runs on a free instance that sleeps after inactivity, so the first
+request in a while takes 30-60 seconds to wake it. The status page says so
+rather than showing a broken screen.
+
 ## Status
 
-**M0 complete — walking skeleton.** The path from browser to API to warehouse is
-deployed and verified before any analysis exists.
+**M0 complete — walking skeleton, deployed and verified in production.** The
+path from browser to API to warehouse works before any analysis exists.
 
 | Milestone | State |
 |---|---|
-| M0 Foundation & walking skeleton | ✅ Complete |
+| M0 Foundation & walking skeleton | ✅ Complete — deployed |
 | M1 Ingestion & backfill | Next |
 | M2 Data-quality audit | Pending |
 | M3 Warehouse | Pending |
