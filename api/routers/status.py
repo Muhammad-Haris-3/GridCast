@@ -22,6 +22,44 @@ from gridcast.db import fetch_all, fetch_one
 router = APIRouter()
 
 
+def _diagnose(exc: Exception) -> str:
+    """Turn a database connection failure into the action that fixes it.
+
+    "OperationalError" tells an operator nothing. A rejected password, an
+    unreachable host and a missing role need three completely different
+    responses, and the person reading this page is usually the one who can fix
+    it in about a minute — if they are told which of the three it is.
+
+    The raw driver message is classified rather than echoed. It contains the
+    host, port and role, and while it does not contain the password, this
+    endpoint is public and unauthenticated: matching on known causes cannot
+    leak, whereas passing text through can.
+    """
+    text = str(exc).lower()
+
+    if "password authentication failed" in text or "authentication" in text:
+        return (
+            "The database rejected the credential. GRIDCAST_READONLY_DATABASE_URL "
+            "is wrong or stale — most likely the password was rotated and the "
+            "serving environment still holds the old one."
+        )
+    if "does not exist" in text:
+        return (
+            "The role or database named in GRIDCAST_READONLY_DATABASE_URL does not "
+            "exist on this server. Check the URL points at the right Neon project."
+        )
+    if "timeout" in text or "timed out" in text:
+        return (
+            "The database did not answer in time. If this is the first request in "
+            "a while the instance may be waking; reload once before investigating."
+        )
+    if "could not translate host" in text or "name or service not known" in text:
+        return "The database hostname could not be resolved. Check the host in the URL."
+    if "ssl" in text:
+        return "TLS negotiation failed. Neon requires sslmode=require in the URL."
+    return "The database could not be reached, and the cause was not recognised."
+
+
 @router.get("/health", tags=["meta"])
 def health() -> dict[str, Any]:
     settings = get_settings()
@@ -89,6 +127,8 @@ def status() -> dict[str, Any]:
         )
     except Exception as exc:  # noqa: BLE001 — degrade, do not 500
         payload["detail"] = type(exc).__name__
+        payload["diagnosis"] = _diagnose(exc)
+        payload["warnings"].append(payload["diagnosis"])
         return payload
 
     payload["database"] = "ok"

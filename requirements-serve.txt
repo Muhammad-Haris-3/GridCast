@@ -6,7 +6,15 @@
 # so the constraint cannot erode through one convenient import.
 
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+
+# Plain uvicorn, not uvicorn[standard].
+#
+# [standard] pulls uvloop, httptools, watchfiles, websockets and PyYAML. This
+# API serves precomputed JSON on a free instance: none of that is load-bearing,
+# watchfiles exists only for --reload which production does not use, and every
+# extra wheel is build time on a cold deploy and resident memory against a
+# 512 MB ceiling.
+uvicorn==0.34.0
 psycopg[binary]==3.2.3
 pydantic==2.10.4
 pydantic-settings==2.7.0
