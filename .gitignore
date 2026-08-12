@@ -40,8 +40,10 @@ Thumbs.db
 #   models/      — model artefacts are versioned with the code that made them
 #   seals/       — integrity seals must be externally verifiable from git history
 
-# Stray debugging artefacts
-ci.log
+# Working artefacts. Matched by pattern rather than by name: ci.log and
+# pytest-output.txt were each added individually after being committed by
+# accident, which is a rule that only ever catches the last mistake.
+*.log
 pytest-output.txt
 
 # A stray nested git repo lived here from an early upload attempt; the
