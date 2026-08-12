@@ -2,9 +2,8 @@
 
 **Milestone:** M6
 **Date:** 2026-08-13
-**Status:** Partially complete. G2 trained, evaluated and beating every baseline.
-Quantile intervals, error segmentation and live challenger registration remain
-(§7).
+**Status:** Complete for modelling. G2 trained, calibrated and issuing live as a
+challenger. Error segmentation and D-2 deferred to M7 (§9).
 
 ---
 
@@ -159,7 +158,8 @@ one.
 
 ## 6. Model artefact
 
-`models/G2_gbm_v1.joblib` — 1.5 MB, committed alongside
+`models/G2_gbm_v1.joblib` — 5.4 MB (point model plus four quantile models),
+committed alongside
 `G2_gbm_v1.json` recording the training window, embargo, feature list, MASE
 scale and holdout results.
 
@@ -169,15 +169,98 @@ the register by an offline job and the API only reads rows.
 
 ---
 
-## 7. What M6 has not done
+## 7. Intervals: broken, then fixed, and still not perfect
+
+The first quantile models were fitted with the pinball loss and used directly.
+Their **nominal 80% intervals achieved 59–63% empirical coverage** — overconfident
+by nearly twenty points.
+
+That is exactly the failure `metrics.coverage` was written to name: *an 80%
+interval containing 62% of actuals is a broken product, not a small miss*. It
+means every stated uncertainty understates the risk, and a user shifting load on
+it is taking more than they were told.
+
+Two causes. Quantile GBMs are reliably overconfident out of sample, and the
+early-stopping validation split cannot detect it because it is drawn at random
+from a time series and so is not out of sample at all.
+
+**Conformalized quantile regression** fixes it with a distribution-free
+guarantee. Quantiles are fitted on the earlier 75% of the training window; the
+later 25% is held back purely to measure how far outside its own interval
+reality actually falls. The interval is then widened by that measured amount —
+9.4 gCO₂/kWh each side at 80%, 10.1 at 95%. The calibration split is
+chronological, like every other split here; a random one would calibrate against
+days the model had effectively seen.
+
+| Interval | Before | After | Nominal |
+|---|---|---|---|
+| 80% | 59–63% | **74.9%** | 80% |
+| 95% | — | **93.9%** | 95% |
+
+By horizon, 80% coverage: H1 79.9%, H2 73.8%, H3 75.4%, H4 74.3%.
+
+**It is still 5 points short at 80%, and that is reported rather than tuned
+away.** The residual is distribution shift: conformal guarantees coverage under
+exchangeability, and a decarbonising grid violates it — the calibration data is
+2025, the test is 2026. Further tuning against the test set would buy a better
+number and a worse model.
+
+The consequence is a labelling obligation, not a licence. The interval is
+published as nominal-80 with its **measured** coverage shown beside it, which is
+the same rule NFR-9 applies to accuracy figures.
+
+The live path applies the same widening. Serving raw quantiles while reporting
+calibrated coverage in the model card would be worse than shipping no intervals.
+
+---
+
+## 8. G2 is live as a challenger
+
+Issuing every pipeline run alongside the champion, the persistence baseline and
+the ESO benchmark — all at one shared `run_at`, so identical periods hold by
+construction.
+
+```
+B1_seasonal_naive_q_v1    96 forecast(s)
+B0_persistence_v1         96 forecast(s)
+ESO_published             94 forecast(s)
+G2_gbm_v1                 96 forecast(s)
+```
+
+Interval widths at 80%, one issue time:
+
+| Horizon | G2 | B1 seasonal naive |
+|---|---|---|
+| 1 | 76 | 137 |
+| 48 | 93 | 137 |
+| 96 | 96 | 174 |
+
+G2's intervals are roughly 45% narrower than the incumbent's *and* better
+calibrated, and they widen with horizon as they should.
+
+**G2 is a challenger, not the champion.** It forecasts and is scored; it does not
+serve. Promotion is decided only by the rule in `PREREGISTRATION.md` — 1,440
+scored points per horizon group, Diebold–Mariano with a Wilcoxon confirmation,
+Benjamini–Hochberg across four groups. A model that looks better offline does not
+get promoted for looking better offline.
+
+The features are built by the same function used in training, at the same
+embargo. A separate serving-time feature path is the classic way a model that
+scored well offline quietly degrades in production.
+
+If the artefact is missing the run prints so and continues: a challenger failing
+must never stop the champion and the benchmark being recorded, because a hole in
+their series cannot be refilled once the moment has passed.
+
+---
+
+## 9. What M6 has not done
 
 | Item | State |
 |---|---|
-| **Quantile intervals** | Not built. G2 issues a point forecast only; coverage cannot be validated until the quantile models exist |
-| **Error segmentation** | Not done. Accuracy by season, wind share, demand level and ramp magnitude |
-| **G2 as a live challenger** | Not registered. The champion is still the M5 seasonal-naive baseline |
-| **D-2 weather alignment** | Still `step_hold`, provisional. Now measurable by comparing G2 trained under each |
-| **Landing retention** | 41 MB headroom, ~0.15 MB/day |
+| **Error segmentation** | Not done. Accuracy by season, wind share, demand level and ramp magnitude belongs with drift monitoring at M7 |
+| **D-2 weather alignment** | Still `step_hold`, provisional. Now measurable by retraining G2 under each and comparing |
+| **Landing retention** | 41 MB headroom at ~0.15 MB/day, roughly nine months |
 
 The milestone is reported partially complete rather than adjusted to fit what
 was finished. Registering G2 live is the highest-value remaining item: it starts
@@ -186,7 +269,7 @@ running is a day of live evidence not collected.
 
 ---
 
-## 8. Next
+## 10. Next
 
 Finish M6 — quantile intervals, coverage validation, segmentation, and G2 issuing
 live as a challenger under `PREREGISTRATION.md`. Then M7 for the champion/

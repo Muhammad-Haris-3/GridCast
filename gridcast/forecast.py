@@ -38,6 +38,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -62,8 +63,15 @@ CHAMPION_FAMILY = "seasonal_naive"
 ISSUED_MODELS: dict[str, str] = {
     "B1_seasonal_naive_q_v1": "seasonal_naive",
     "B0_persistence_v1": "persistence",
+    "G2_gbm_v1": "hist_gradient_boosting",
     "ESO_published": "external_benchmark",
 }
+
+# The trained artefact, committed alongside the code that produced it. Absent
+# artefact means G2 simply does not issue this run — a missing model must not
+# stop the champion and the benchmark from being recorded, because a gap in
+# their series is a gap in the evidence.
+G2_ARTEFACT = Path(__file__).resolve().parent.parent / "models" / "G2_gbm_v1.joblib"
 
 # Quantiles are empirical: the distribution of this model's own historical
 # errors at each horizon, rather than a normal approximation. Intensity errors
@@ -257,6 +265,92 @@ def row_hash(model_version: str, run_at: datetime, row: ForecastRow) -> bytes:
     return hashlib.sha256(payload.encode()).digest()
 
 
+def load_g2():
+    """Load the trained model, or None if it is not present.
+
+    Imports scikit-learn lazily. This module is only ever run by the pipeline,
+    but keeping the import inside the function means an environment without a
+    modelling stack can still issue the baselines rather than failing outright.
+    """
+    if not G2_ARTEFACT.exists():
+        return None
+    import joblib
+
+    return joblib.load(G2_ARTEFACT)
+
+
+def build_g2_forecast(bundle, run_at, anchor, targets):
+    """G2's point forecast and quantile interval for each target.
+
+    Features are built through exactly the same function used in training, at
+    the same embargo. A separate serving-time feature path is the classic way a
+    model that scored well offline quietly degrades in production, because the
+    two implementations drift and nothing compares them.
+    """
+    from gridcast.features import (
+        build_features,
+        load_intensity_history,
+        load_mix_history,
+        load_weather_history,
+    )
+
+    intensity = load_intensity_history()
+    mix = load_mix_history()
+    weather = load_weather_history()
+
+    frame = build_features(
+        run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
+    )
+    matrix = frame[bundle["features"]].to_numpy(dtype=float)
+
+    point = bundle["model"].predict(matrix)
+    quantiles = {
+        name: q_model.predict(matrix) for name, q_model in bundle["quantile_models"].items()
+    }
+
+    # Independently fitted quantiles can cross. Sorting is the standard remedy;
+    # without it the database CHECK would reject the row outright rather than
+    # the interval merely being wrong.
+    stacked = np.vstack([quantiles[k] for k in ("q025", "q10", "q90", "q975")])
+    stacked.sort(axis=0)
+
+    # Apply the conformal widening measured at training time.
+    #
+    # Without it the live intervals would be the raw quantile output, which
+    # covered 59-63% against a nominal 80% — the exact failure the training run
+    # was changed to fix. Serving uncalibrated intervals while reporting
+    # calibrated ones in the model card would be worse than not shipping
+    # intervals at all.
+    conformal = bundle.get("conformal", {})
+    widen_80 = float(conformal.get("q10|q90", 0.0))
+    widen_95 = float(conformal.get("q025|q975", 0.0))
+    stacked[0] -= widen_95  # q025
+    stacked[1] -= widen_80  # q10
+    stacked[2] += widen_80  # q90
+    stacked[3] += widen_95  # q975
+    stacked.sort(axis=0)  # widening cannot reorder, but re-assert it
+
+    rows = []
+    for i, target in enumerate(targets):
+        rows.append(
+            ForecastRow(
+                target=target,
+                horizon=int((target - anchor) / PERIOD),
+                point=float(point[i]),
+                quantiles={
+                    "q025": float(stacked[0][i]),
+                    "q10": float(stacked[1][i]),
+                    "q90": float(stacked[2][i]),
+                    "q975": float(stacked[3][i]),
+                },
+                feature_hash=hashlib.sha256(
+                    frame.iloc[i][bundle["features"]].to_json().encode()
+                ).digest(),
+            )
+        )
+    return rows
+
+
 NOTES = {
     "B1_seasonal_naive_q_v1": (
         "M5 opening champion. A baseline on purpose: the milestone's deliverable "
@@ -265,6 +359,12 @@ NOTES = {
     ),
     "B0_persistence_v1": (
         "Reference baseline. Establishes that a model has learned anything at all."
+    ),
+    "G2_gbm_v1": (
+        "Gradient boosting on 39 point-in-time features, no ESO input - the fair "
+        "competitor. Out-of-sample MASE 0.46 to 0.55 against a best baseline of "
+        "1.03 to 1.38. Issued as a challenger; promotion is decided only by the "
+        "pre-registered rule."
     ),
     "ESO_published": (
         "National Grid ESO's published forecast, recorded at the horizon we "
@@ -413,6 +513,20 @@ def main() -> int:
         "B0_persistence_v1": persistence_rows,
         "ESO_published": eso_rows,
     }
+
+    bundle = load_g2()
+    if bundle is None:
+        print("  G2_gbm_v1               artefact not found — not issued this run")
+    else:
+        try:
+            issued["G2_gbm_v1"] = build_g2_forecast(
+                bundle, run_at, current_period, pd.DatetimeIndex([r.target for r in rows])
+            )
+        except Exception as exc:  # noqa: BLE001
+            # A challenger failing must never stop the champion or the benchmark
+            # being recorded. Their series are the evidence; a hole in them
+            # cannot be refilled later because the moment has passed.
+            print(f"  G2_gbm_v1               FAILED {type(exc).__name__}: {exc}")
 
     total = 0
     for version, model_rows in issued.items():

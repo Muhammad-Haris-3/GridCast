@@ -23,6 +23,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
@@ -206,12 +207,128 @@ def main() -> int:
             f"{row['rmse']:>9.2f}{row['bias']:>9.2f}{row['mase']:>9.3f}"
         )
 
+    # -----------------------------------------------------------------
+    # G3 — quantile models, one per level.
+    #
+    # Fitted with the pinball loss rather than derived from the point model's
+    # residuals. A residual-based interval assumes the spread is the same
+    # everywhere; carbon intensity error is plainly not, being far wider on
+    # windy days and through ramps than it is overnight. Separate quantile
+    # regressors let the interval breathe with the conditions.
+    # -----------------------------------------------------------------
+    print("")
+    print("fitting G3 quantiles...")
+
+    # CONFORMAL CALIBRATION.
+    #
+    # The first attempt fitted quantile models and used their output directly.
+    # Nominal 80% intervals achieved 59-63% empirical coverage - overconfident by
+    # nearly twenty points, which is the exact failure metrics.coverage warns
+    # about: an 80% interval containing 62% of actuals is a broken product, not a
+    # small miss. Quantile GBMs are reliably overconfident out of sample, and the
+    # early-stopping validation split cannot detect it because it is drawn at
+    # random from a time series and so is not out of sample at all.
+    #
+    # Conformalized quantile regression fixes it with a distribution-free
+    # guarantee. Quantiles are fitted on the earlier part of the training window;
+    # the later part is held back purely to measure how far outside the predicted
+    # interval reality actually falls. The interval is then widened by that
+    # measured amount.
+    #
+    # The calibration split is chronological, like every other split here. A
+    # random one would calibrate against days the model had effectively seen.
+    split = int(len(x_train) * 0.75)
+    x_fit, y_fit = x_train[:split], y_train[:split]
+    x_cal, y_cal = x_train[split:], y_train[split:]
+    print(f"  fitting on {len(x_fit):,} rows, calibrating on {len(x_cal):,}")
+
+    quantile_models: dict[str, HistGradientBoostingRegressor] = {}
+    for name, alpha in QUANTILES.items():
+        q_model = HistGradientBoostingRegressor(
+            loss="quantile",
+            quantile=alpha,
+            max_iter=250,
+            learning_rate=0.06,
+            max_depth=7,
+            min_samples_leaf=40,
+            l2_regularization=1.0,
+            early_stopping=True,
+            validation_fraction=0.15,
+            random_state=17,
+        )
+        q_model.fit(x_fit, y_fit)
+        quantile_models[name] = q_model
+
+    def sorted_quantiles(matrix):
+        raw = {name: m.predict(matrix) for name, m in quantile_models.items()}
+        stacked = np.vstack([raw[k] for k in ("q025", "q10", "q90", "q975")])
+        stacked.sort(axis=0)  # independently fitted quantiles can cross
+        return dict(zip(("q025", "q10", "q90", "q975"), stacked, strict=True))
+
+    # The conformity score: how far outside its own interval each calibration
+    # point fell. Its (1-alpha) quantile is the width the interval was missing.
+    cal_q = sorted_quantiles(x_cal)
+    conformal = {}
+    for lo, hi, nominal in (("q10", "q90", 0.80), ("q025", "q975", 0.95)):
+        scores = np.maximum(cal_q[lo] - y_cal, y_cal - cal_q[hi])
+        conformal[(lo, hi)] = float(np.quantile(scores, nominal))
+        print(f"  {nominal:.0%} interval widened by {conformal[(lo, hi)]:.1f} gCO2/kWh each side")
+
+    test_q = sorted_quantiles(x_test)
+    quantile_predictions = {
+        "q10": test_q["q10"] - conformal[("q10", "q90")],
+        "q90": test_q["q90"] + conformal[("q10", "q90")],
+        "q025": test_q["q025"] - conformal[("q025", "q975")],
+        "q975": test_q["q975"] + conformal[("q025", "q975")],
+    }
+
+    coverage_80 = metrics.coverage(y_test, quantile_predictions["q10"], quantile_predictions["q90"])
+    coverage_95 = metrics.coverage(
+        y_test, quantile_predictions["q025"], quantile_predictions["q975"]
+    )
+    width_80 = metrics.interval_width(quantile_predictions["q10"], quantile_predictions["q90"])
+    width_95 = metrics.interval_width(quantile_predictions["q025"], quantile_predictions["q975"])
+    pinball_10 = metrics.pinball(y_test, quantile_predictions["q10"], 0.10)
+    pinball_90 = metrics.pinball(y_test, quantile_predictions["q90"], 0.90)
+
+    print("")
+    print("interval calibration (nominal vs empirical, after conformal widening)")
+    print(f"  80%  ->  {coverage_80 * 100:5.1f}%   mean width {width_80:6.1f} gCO2/kWh")
+    print(f"  95%  ->  {coverage_95 * 100:5.1f}%   mean width {width_95:6.1f} gCO2/kWh")
+    print(f"  pinball q10 {pinball_10:.3f} | q90 {pinball_90:.3f}")
+    if abs(coverage_80 - 0.80) > 0.05:
+        print(
+            "  NOTE: 80% coverage is still more than 5 points from nominal. "
+            "An interval that misstates its own uncertainty is a broken product."
+        )
+
+    coverage_by_group = {}
+    results["q10"] = quantile_predictions["q10"]
+    results["q90"] = quantile_predictions["q90"]
+    for group, block in results.groupby("horizon_group"):
+        coverage_by_group[group] = metrics.coverage(
+            block["actual"].to_numpy(), block["q10"].to_numpy(), block["q90"].to_numpy()
+        )
+    print(
+        "  80% coverage by horizon: "
+        + "  ".join(f"{g} {c * 100:.1f}%" for g, c in sorted(coverage_by_group.items()))
+    )
+
     if args.save:
         MODELS_DIR.mkdir(exist_ok=True)
         import joblib
 
         artefact = MODELS_DIR / "G2_gbm_v1.joblib"
-        joblib.dump({"model": model, "features": columns, "mase_scale": scale}, artefact)
+        joblib.dump(
+            {
+                "model": model,
+                "quantile_models": quantile_models,
+                "conformal": {f"{lo}|{hi}": v for (lo, hi), v in conformal.items()},
+                "features": columns,
+                "mase_scale": scale,
+            },
+            artefact,
+        )
         (MODELS_DIR / "G2_gbm_v1.json").write_text(
             json.dumps(
                 {
@@ -225,6 +342,15 @@ def main() -> int:
                     "mase_scale": scale,
                     "uses_eso_forecast": False,
                     "holdout": summary,
+                    "interval_calibration": {
+                        "coverage_80": coverage_80,
+                        "coverage_95": coverage_95,
+                        "width_80": width_80,
+                        "width_95": width_95,
+                        "pinball_10": pinball_10,
+                        "pinball_90": pinball_90,
+                        "coverage_80_by_horizon_group": coverage_by_group,
+                    },
                 },
                 indent=2,
             )
