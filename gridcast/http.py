@@ -34,8 +34,12 @@ class UpstreamError(RuntimeError):
     stop=stop_after_attempt(4),
     reraise=True,
 )
-def get_json(url: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_json(url: str, *, params: dict[str, Any] | None = None) -> Any:
     """GET a URL and return parsed JSON, retrying transient failures.
+
+    The return type is deliberately loose: Open-Meteo answers a
+    multi-coordinate request with a list and a single-coordinate request with an
+    object, and pretending otherwise would mean lying in the annotation.
 
     4xx other than 429 are not retried: a malformed request will stay malformed
     however many times it is sent, and retrying it just wastes someone else's

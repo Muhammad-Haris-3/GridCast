@@ -1,0 +1,65 @@
+name: Pipeline
+
+# Every 30 minutes, matching the settlement period.
+#
+# GitHub's cron is best-effort: runs are delayed under load and skipped
+# entirely when the platform is busy. That is not worked around, because it
+# cannot be. Instead every run ends with gap detection, so a run that never
+# happened becomes a gap the next run closes. The target in NFR-1 is coverage,
+# not punctuality.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+# A delayed run must never overlap the next one. Two ingestions writing the same
+# window concurrently would both see "no existing row" and both insert.
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Ingest, heal, rebuild
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Ingest scheduled sources
+        run: python -m gridcast.ingest --scheduled --days 2
+
+      # Runs even if ingestion failed: a partial failure is exactly when the
+      # gaps appear, so skipping the heal would leave the hole open until the
+      # next successful run.
+      - name: Heal gaps
+        if: always()
+        run: python -m gridcast.gapfill --lookback 7
+
+      - name: Rebuild warehouse
+        if: always()
+        working-directory: dbt_gridcast
+        run: dbt build --profiles-dir .
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGSSLMODE: require
+
+      - name: Surface the failure
+        if: failure()
+        run: echo "::error title=pipeline::Ingestion or warehouse build failed. Check landing.run_log for the source and error class."
+

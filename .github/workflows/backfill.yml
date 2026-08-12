@@ -1,0 +1,84 @@
+name: Backfill
+
+# Manual historical load.
+#
+# Backfill is not a special code path — it is the ordinary ingestion function
+# called with a wider window. That is why a backfill which dies halfway can
+# simply be run again rather than reasoned about: every write goes through
+# insert-if-changed, so re-covering ground already loaded writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Source name, or 'all'"
+        required: true
+        default: "ci_intensity"
+        type: choice
+        options:
+          - all
+          - ci_intensity
+          - ci_genmix
+          - ci_regional
+          - ex_demand
+          - ex_price
+          - om_archive
+          - om_vintage
+      date_from:
+        description: "Start date, YYYY-MM-DD (history begins 2018-05-09)"
+        required: true
+        default: "2018-05-09"
+      date_to:
+        description: "End date, YYYY-MM-DD (exclusive)"
+        required: true
+        default: "2019-01-01"
+      pause:
+        description: "Seconds between requests. Raise it, never lower it."
+        required: false
+        default: "1.0"
+
+concurrency:
+  group: backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Backfill ${{ inputs.source }} ${{ inputs.date_from }} to ${{ inputs.date_to }}
+    runs-on: ubuntu-latest
+    # GitHub kills a job at 6 hours regardless. A range too wide to finish is
+    # not a failure: the next run resumes from what is already landed, because
+    # nothing here depends on completing in one pass.
+    timeout-minutes: 350
+
+    env:
+      GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Backfill
+        run: |
+          if [ "${{ inputs.source }}" = "all" ]; then
+            for s in ci_intensity ci_genmix ex_demand ex_price om_archive om_vintage; do
+              echo "::group::$s"
+              python -m gridcast.ingest --source "$s" \
+                --from "${{ inputs.date_from }}" --to "${{ inputs.date_to }}" \
+                --pause "${{ inputs.pause }}" || echo "::warning::$s failed, continuing"
+              echo "::endgroup::"
+            done
+          else
+            python -m gridcast.ingest --source "${{ inputs.source }}" \
+              --from "${{ inputs.date_from }}" --to "${{ inputs.date_to }}" \
+              --pause "${{ inputs.pause }}"
+          fi
+
+      - name: Coverage after backfill
+        if: always()
+        run: python -m gridcast.gapfill --lookback 3650 --detect-only

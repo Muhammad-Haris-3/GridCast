@@ -1,0 +1,53 @@
+name: Daily
+
+# The slower-moving sources, once a day at 04:00 UTC.
+#
+# Separate from the 30-minute pipeline because polling any of these every half
+# hour would be waste on somebody else's free service: regional intensity
+# returns 17 rows per settlement period, the weather archive lags reality by
+# days, and price is published once per period and then does not move.
+#
+# 04:00 UTC is chosen for the same reason: it is the quietest part of the GB
+# grid day, so a slow response costs nothing.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    name: Daily sources and deep heal
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Ingest daily sources
+        run: python -m gridcast.ingest --daily --days 5
+
+      # A wider sweep than the half-hourly run. The 7-day lookback there closes
+      # ordinary lateness; this one catches an outage long enough that nobody
+      # noticed it at the time.
+      - name: Deep heal
+        if: always()
+        run: python -m gridcast.gapfill --lookback 30
+
+      - name: Report coverage
+        if: always()
+        run: python -m gridcast.gapfill --lookback 30 --detect-only

@@ -171,3 +171,12 @@ CREATE TABLE IF NOT EXISTS landing.lnd_om_vintage (
 
 CREATE INDEX IF NOT EXISTS lnd_om_vintage_key_idx
     ON landing.lnd_om_vintage (location_id, hour_start_utc, issued_at_utc DESC);
+
+-- Open-Meteo does not publish the model run time in these responses, so the
+-- instant we received a forecast is the tightest bound we have on when it
+-- existed — the same principle as fetched_at_utc being the leakage boundary.
+-- Defaulting the column keeps issue time out of the natural key: if it were in
+-- the key, every poll would write a new row for an unchanged forecast and the
+-- insert-if-changed mechanism would be defeated for these two tables alone.
+ALTER TABLE landing.lnd_om_forecast ALTER COLUMN issued_at_utc SET DEFAULT now();
+ALTER TABLE landing.lnd_om_vintage  ALTER COLUMN issued_at_utc SET DEFAULT now();
