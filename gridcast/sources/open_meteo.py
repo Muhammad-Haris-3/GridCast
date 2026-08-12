@@ -52,29 +52,38 @@ LOCATIONS: list[tuple[str, float, float]] = [
     ("south_coast", 50.9, -1.4),  # solar, and southern demand
 ]
 
-# D-3 IS NOT RESOLVED. An earlier version of this comment said it was.
+# D-3 RESOLVED, on 100% coverage, by the rule fixed in audit/E01 before any
+# number was seen: keep a location whose correlation with national wind share
+# exceeds 0.5, and where two locations correlate above 0.85 with each other keep
+# only the stronger.
 #
-# The correlations were computed and a location was dropped, on data that turned
-# out to cover 2018-05-09 to 2021-12-19 only — 3.6 years of an 8.25-year
-# history, about 44%. The om_vintage backfill had died on Neon's 512 MB limit
-# and `landing.run_log` recorded it as failed with a DiskFull error. Nobody
-# read the run log, and 61,105 observations per location looked plausible enough
-# not to prompt the question.
+# 140,323 observations per location, 2018-05 to 2026-08:
 #
-# The measured figures, valid only for 2018-2021:
+#   irish_sea       0.7143       scotland_south  0.6564
+#   north_sea       0.7068       south_coast     0.5448
+#   midlands        0.6936       scotland_north  0.4285   <- fails the floor
 #
-#   irish_sea       0.726        midlands        0.715
-#   north_sea       0.716        scotland_south  0.652
-#   south_coast     0.589        scotland_north  0.460
+# No pair exceeded 0.85, so the redundancy rule never fired and only the floor
+# did. scotland_north is dropped from the feature set.
 #
-# They cannot carry the decision. Mean intensity over that window was 180-236
-# gCO2/kWh against about 125 today, and the generation mix that produced those
-# correlations is not the mix being forecast now — which is exactly the kind of
-# drift this project exists to take seriously.
+# 57.5N -4.0 is inland Highlands. Open-Meteo models the mountain interior there,
+# while GB onshore wind capacity sits on coasts and ridgelines — the point
+# measures the wrong Scotland. It is also the least windy of the six at 23.6
+# km/h mean, which is not what the northernmost point should look like.
 #
-# No location is excluded until the backfill completes and E01 is re-run on the
-# full period. An empty set here is the honest state.
-EXCLUDED_FROM_FEATURES: frozenset[str] = frozenset()
+# It stays in LOCATIONS and keeps being ingested: the series is the evidence for
+# this decision, and a feature set is easier to defend when the rejected
+# candidate is still measurable.
+#
+# ON THE HISTORY OF THIS DECISION. An earlier commit reached the same conclusion
+# from 44% of the data, because the backfill had died on Neon's storage limit
+# and nobody read the run log that recorded it. That version was retracted, and
+# retracting it was right even though the answer has not changed: a conclusion
+# that happens to be correct for the wrong reason is not knowledge, and the
+# process that produced it would have been trusted next time on a question where
+# the answer did differ. The partial-period figures ran 0.03 to 0.04 higher
+# across every location — same ordering, same verdict, different numbers.
+EXCLUDED_FROM_FEATURES: frozenset[str] = frozenset({"scotland_north"})
 
 FEATURE_LOCATIONS: list[str] = [
     name for name, _, _ in LOCATIONS if name not in EXCLUDED_FROM_FEATURES

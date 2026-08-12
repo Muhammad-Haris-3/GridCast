@@ -156,7 +156,7 @@ def main() -> int:
 
     for name in names:
         spec = REGISTRY[name]
-        if not spec.gap_checkable:
+        if not spec.gap_checkable or spec.deferred:
             continue
 
         if args.detect_only:

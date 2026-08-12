@@ -2,7 +2,7 @@
 
 **Milestone:** M4
 **Date:** 2026-08-12
-**Status:** Complete for the harness and baselines. D-3 was reported resolved and is not — see §6.
+**Status:** Complete. D-3 resolved on full coverage after one retraction — see §6.
 
 ---
 
@@ -154,66 +154,69 @@ because "the test failed so the code is broken" is the wrong reflex.
 
 ---
 
-## 6. D-3 is NOT resolved, and an earlier version of this document said it was
+## 6. D-3 resolved — after being retracted once
 
-This section originally reported D-3 as settled and `scotland_north` as dropped.
-That conclusion was wrong, and the way it went wrong is worth more than the
-conclusion would have been.
+**The outcome: five locations, `scotland_north` dropped.** Getting there is the
+part worth reading.
 
-**The correlations were computed on 44% of the history.** `lnd_om_vintage`
-covers 2018-05-09 to 2021-12-19 only — 3.6 years of 8.25. The backfill had died
-partway through, and `landing.run_log` recorded exactly why:
+### 6.1 The first attempt was retracted
+
+An earlier version of this section reported D-3 settled and `scotland_north`
+dropped on a correlation of 0.460. **The correlations had been computed over 44%
+of the history.** `lnd_om_vintage` held 2018-05-09 to 2021-12-19, because the
+backfill had died on Neon's 512 MB ceiling. `landing.run_log` had recorded it:
 
 ```
 om_vintage | ingest | failed | rows_read 200,880 | rows_written 193,604
 DiskFull: could not extend file because project size limit (512 MB) has been exceeded
 ```
 
-Three failures compounded:
+Three failures compounded. The ingest hit the ceiling. The shell wrapper running
+it ended with `echo "### DONE"`, so the block exited 0 and masked the CLI's
+non-zero status. And the correlation returned 61,105 observations per location —
+plausible enough that nobody asked why it was not 144,000.
 
-1. The ingest hit Neon's storage ceiling and stopped.
-2. The shell wrapper that ran it ended with `echo "### DONE"`, so the block
-   exited 0 and masked the CLI's non-zero status.
-3. The correlation query returned 61,105 observations per location — plausible
-   enough that nobody asked why it was not 144,000.
+The run log did its job perfectly, at the moment it happened, with the error
+class and message. It was never read. That is worse than not having built it.
 
-The run log did its job. It recorded the failure, with the error class and the
-message, at the moment it happened. It was simply never read — which is a worse
-failure than not having built it, because the information existed and the
-decision was made anyway.
+### 6.2 The complete result
 
-**The figures, valid only for 2018-2021:**
+After deferring `ci_regional` and `ex_price`, inverting `fct_weather_period` to
+a view and resuming the backfill, `lnd_om_vintage` reached 100%: 434,592 rows
+across 72,432 distinct hours.
 
-| Location | corr(wind speed, wind share) |
-|---|---|
-| irish_sea | 0.726 |
-| north_sea | 0.716 |
-| midlands | 0.715 |
-| scotland_south | 0.652 |
-| south_coast | 0.589 |
-| scotland_north | 0.460 |
+| Location | corr(wind speed, wind share) | corr(radiation, solar share) | mean wind |
+|---|---|---|---|
+| irish_sea | 0.7143 | 0.826 | 33.8 |
+| north_sea | 0.7068 | 0.829 | 34.6 |
+| midlands | 0.6936 | 0.873 | 25.6 |
+| scotland_south | 0.6564 | 0.790 | 27.1 |
+| south_coast | 0.5448 | 0.870 | 24.0 |
+| **scotland_north** | **0.4285** | 0.758 | 23.6 |
 
-They cannot carry the decision. Mean intensity across that window was 180-236
-gCO2/kWh against roughly 125 today, and the generation mix that produced these
-correlations is not the mix being forecast now. Using them would be fitting a
-feature set to a grid that no longer exists — the same drift argument that
-disqualified `intensity.index` at M2.
+140,323 observations per location. No pair of locations exceeded 0.85 with each
+other, so the redundancy rule never fired and only the floor did.
 
-`EXCLUDED_FROM_FEATURES` is now empty. No location is dropped until the backfill
-completes and E01 is re-run over the full period.
+`scotland_north` is dropped. 57.5°N −4.0°W is inland Highlands: Open-Meteo
+models the mountain interior, while GB onshore wind sits on coasts and
+ridgelines. It is also the least windy of the six at 23.6 km/h, which is not
+what the northernmost point should look like — the coordinate measures the wrong
+Scotland.
 
-### 6.1 Completing it needs storage that does not currently exist
+Solar radiation correlates 0.76–0.87 with solar share everywhere, a useful
+independent check that the weather join is aligned correctly.
 
-The remaining 2021-12 to 2026-08 is roughly 242,000 more landing rows, about
-104 MB, plus the same again doubled in `fct_weather_period` because that model
-stores one row per settlement period rather than per hour. Against 92 MB free,
-it does not fit.
+### 6.3 Why retracting was still right
 
-The cheapest fix is the one already applied to the generation mix at M3:
-materialise `fct_weather_period` as a view rather than a table. It doubles every
-hourly row into two settlement periods purely for join convenience, which is the
-same "storing a shape that is only consumed in another shape" habit that cost
-115 MB last milestone.
+The verdict did not change. The ordering did not change. The partial-period
+figures ran 0.03 to 0.04 higher across every location, and the same location
+failed the same threshold.
+
+Retracting was correct anyway. **A conclusion that happens to be right for the
+wrong reason is not knowledge**, and the process that produced it — plausible
+row count, unread run log, no coverage check — would have been trusted again on
+a question where the answer did differ. `audit/A03` now reports coverage per
+source so the question is asked before an analysis rather than after it.
 
 ## 7. Where backtest results live
 

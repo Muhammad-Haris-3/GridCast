@@ -71,6 +71,24 @@ class SourceSpec:
     # for gaps. Weather is hourly and keyed by location, so it is excluded.
     gap_checkable: bool = True
 
+    # Deferred sources are not ingested and not gap-healed.
+    #
+    # This is a storage decision with a measured basis. On the first live
+    # pipeline run, ci_regional and ex_price accounted for 13,240 of 13,888 rows
+    # written — 95% — while the four sources M5 actually needs accounted for
+    # 648. Regional rows are 823 bytes against an intensity row's 300, because
+    # each carries a full generation-mix array per region, and regional can
+    # never be scored at all: the API publishes a forecast and no actual.
+    #
+    # Spending the storage budget on data for a milestone three away, at the
+    # cost of the weather history M6 needs now, is the wrong trade. Both are
+    # re-fetchable from the API when the planner reaches them.
+    #
+    # Deferring rather than deleting the source keeps the decision reversible
+    # and visible: the code that reads these sources still exists and still
+    # works, and turning them back on is one flag.
+    deferred: bool = False
+
     @property
     def key_names(self) -> list[str]:
         return [name for name, _ in self.key_columns]

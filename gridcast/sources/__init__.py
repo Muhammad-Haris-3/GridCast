@@ -35,10 +35,17 @@ SCHEDULED: tuple[str, ...] = (
 )
 
 # Heavier or slower-moving sources, run a few times a day.
-DAILY: tuple[str, ...] = (
-    "ci_regional",
-    "ex_price",
-    "om_archive",
+#
+# ci_regional and ex_price are DEFERRED to M8 and so are absent here. On the
+# first live pipeline run they wrote 13,240 of 13,888 rows — 95% — for data no
+# milestone before M8 consumes, and regional can never be scored at all.
+DAILY: tuple[str, ...] = ("om_archive",)
+
+# Sources switched off until the milestone that needs them. Excluded from
+# ingestion AND from gap-fill: gap detection was the mechanism actually driving
+# the writes, healing seven days of regional on every half-hourly run.
+DEFERRED: tuple[str, ...] = tuple(
+    sorted(name for name, spec in REGISTRY.items() if spec.deferred)
 )
 
-__all__ = ["DAILY", "REGISTRY", "SCHEDULED", "Record", "SourceSpec"]
+__all__ = ["DAILY", "DEFERRED", "REGISTRY", "SCHEDULED", "Record", "SourceSpec"]

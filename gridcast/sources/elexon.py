@@ -100,4 +100,6 @@ PRICE = SourceSpec(
     time_column="sp_start_utc",
     max_window=MAX_WINDOW,
     fetch=fetch_price,
+    # Deferred to M8. See SourceSpec.deferred for the measured basis.
+    deferred=True,
 )

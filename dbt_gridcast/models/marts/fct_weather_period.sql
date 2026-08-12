@@ -1,4 +1,4 @@
-{{ config(materialized='incremental', unique_key='weather_key', incremental_strategy='delete+insert') }}
+{{ config(materialized='view') }}
 
 /*
     fct_weather_period — weather aligned to settlement periods.
@@ -17,23 +17,24 @@
     resolves, changing `weather_alignment` changes it once, here, and every
     downstream consumer inherits the same answer — which is the reason this
     model exists at all rather than each feature aligning weather its own way.
+
+    MATERIALISED AS A VIEW, deliberately, and for the third time in this project
+    the same reasoning applies. The source is hourly; this model is half-hourly,
+    so storing it duplicates every weather observation into two rows purely for
+    join convenience — 380,448 rows and 23 MB against 190,224 hourly source rows.
+
+    Neon's 512 MB ceiling has already stopped this project twice: it killed the
+    om_vintage backfill at 44% and failed the M3 build outright. Storing a shape
+    that is only ever consumed in another shape is the habit that cost 115 MB on
+    the generation mix, and it was about to cost another 50 MB here as the
+    weather history completes.
+
+    The alignment decision still happens exactly once, in this model. Only the
+    storage changed.
 */
 
 with vintage as (
     select * from {{ ref('stg_om_vintage') }}
-    {% if is_incremental() %}
-    -- max(sp_start_utc), not max(hour_start_utc).
-    --
-    -- hour_start_utc is not a column of this model, so a subquery selecting it
-    -- from {{ this }} resolves against the outer query instead and Postgres
-    -- rejects an aggregate in WHERE. The first build passed because the filter
-    -- is only emitted when is_incremental() is true — so the model built clean
-    -- once and failed on every run after, which is a failure that arrives at
-    -- 04:00 in a scheduled pipeline rather than in development.
-    where hour_start_utc >= (
-        select coalesce(max(sp_start_utc), '1970-01-01'::timestamptz) from {{ this }}
-    ) - interval '{{ var("lookback_days") }} days'
-    {% endif %}
 ),
 
 periods as (

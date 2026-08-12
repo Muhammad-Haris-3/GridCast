@@ -101,4 +101,6 @@ REGIONAL = SourceSpec(
     time_column="sp_start_utc",
     max_window=REGIONAL_MAX_WINDOW,
     fetch=fetch_regional,
+    # Deferred to M8. See SourceSpec.deferred for the measured basis.
+    deferred=True,
 )
