@@ -84,7 +84,8 @@ def status() -> dict[str, Any]:
     payload: dict[str, Any] = {
         "env": settings.env,
         "commit": settings.build_id,
-        "milestone": "M0 — walking skeleton",
+        "milestone": "M5 — live forecasting loop",
+        "serving_host": settings.serving_host,
         "database": "unreachable",
         "readonly_role_in_use": settings.readonly_role_in_use,
         "warnings": [],

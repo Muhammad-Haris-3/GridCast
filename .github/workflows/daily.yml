@@ -51,3 +51,30 @@ jobs:
       - name: Report coverage
         if: always()
         run: python -m gridcast.gapfill --lookback 30 --detect-only
+
+      # Seal any newly closed month and verify every existing seal.
+      #
+      # Runs last and is allowed to fail the workflow. A seal mismatch means
+      # either the register changed after sealing or the sealing procedure is
+      # broken, and both must stop the pipeline rather than be noted in a log
+      # nobody reads.
+      - name: Seal and audit the register
+        run: python -m gridcast.seal
+        env:
+          GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+      # New seals are evidence and belong in git, where their history is public
+      # and timestamped. That is what lets anyone verify the register without
+      # access to the database.
+      - name: Commit new seals
+        if: success()
+        run: |
+          if [ -n "$(git status --porcelain seals/)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add seals/
+            git commit -m "Seal the register for the closed month"
+            git push
+          else
+            echo "no new seals to commit"
+          fi

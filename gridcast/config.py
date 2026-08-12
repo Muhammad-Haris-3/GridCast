@@ -96,6 +96,22 @@ class Settings(BaseSettings):
         return self.readonly_database_url or self.database_url
 
     @property
+    def serving_host(self) -> str:
+        """The host the API actually reads from, credentials stripped.
+
+        Published by /v1/status and /v1/integrity. An endpoint answering from a
+        different database than intended looks exactly like an endpoint
+        answering — it has happened four times in this project, most recently
+        when a local .env silently won over an unset environment variable and
+        the API reported 88 forecasts from a test database instead of 667 from
+        production.
+        """
+        url = self.serving_url
+        if not url:
+            return "NOT CONFIGURED"
+        return url.split("@")[-1].split("?")[0]
+
+    @property
     def readonly_role_in_use(self) -> bool:
         return bool(self.readonly_database_url) and (
             self.readonly_database_url != self.database_url

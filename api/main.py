@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.routers import forecast as forecast_router
 from api.routers import status as status_router
 from gridcast.config import get_settings
 
@@ -49,6 +50,7 @@ app.add_middleware(
 )
 
 app.include_router(status_router.router)
+app.include_router(forecast_router.router)
 
 
 @app.get("/", tags=["meta"])
@@ -58,4 +60,7 @@ def root() -> dict[str, str]:
         "docs": "/docs",
         "health": "/health",
         "status": "/v1/status",
+        "forecast": "/v1/forecast/current",
+        "accuracy": "/v1/accuracy",
+        "integrity": "/v1/integrity",
     }

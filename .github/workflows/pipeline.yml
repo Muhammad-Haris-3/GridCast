@@ -59,7 +59,23 @@ jobs:
           PGDATABASE: ${{ secrets.PGDATABASE }}
           PGSSLMODE: require
 
+      # Issue forecasts AFTER the warehouse rebuild, so the model forecasts from
+      # matured actuals rather than from whatever landed thirty seconds ago.
+      - name: Issue forecasts
+        run: python -m gridcast.forecast
+        env:
+          GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+      # Every run, not only the daily one. A forecast becomes scoreable the
+      # moment its target matures, and scoring promptly keeps the public
+      # accuracy figures as close to live as the data allows.
+      - name: Score matured forecasts
+        if: always()
+        run: python -m gridcast.score
+        env:
+          GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
       - name: Surface the failure
         if: failure()
-        run: echo "::error title=pipeline::Ingestion or warehouse build failed. Check landing.run_log for the source and error class."
+        run: echo "::error title=pipeline::Ingestion, forecasting or the warehouse build failed. Check landing.run_log for the source and error class."
 
