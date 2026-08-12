@@ -93,8 +93,29 @@ select
     -- credited with periods its benchmark never had the chance to attempt.
     (i.eso_forecast_gco2_kwh is null) as eso_benchmark_missing,
 
-    (i.actual_gco2_kwh is not null and i.eso_forecast_gco2_kwh is not null)
-        as is_comparable,
+    -- A physically impossible ESO forecast is not a forecast (M4 finding).
+    --
+    -- 16 periods in 2018-2019 carry values up to 13,579 gCO2/kWh. The highest
+    -- actual ever observed is 447 and an all-coal grid would be roughly 900, so
+    -- these are corrupt upstream, not extreme.
+    --
+    -- Left in the table and flagged rather than filtered away, because the fact
+    -- that the ESO published them is itself worth being able to query. But they
+    -- are excluded from is_comparable: a single error of 13,275 contributes
+    -- more to a squared-error metric than ten thousand ordinary ones, and it
+    -- inflated the benchmark's RMSE to nine times its MAE — making the ESO look
+    -- erratic for a reason that has nothing to do with forecasting.
+    (
+        i.eso_forecast_gco2_kwh is not null
+        and i.eso_forecast_gco2_kwh between 0 and {{ var("plausible_max_gco2_kwh") }}
+    ) as is_eso_forecast_plausible,
+
+    (
+        i.actual_gco2_kwh is not null
+        and i.actual_gco2_kwh between 0 and {{ var("plausible_max_gco2_kwh") }}
+        and i.eso_forecast_gco2_kwh is not null
+        and i.eso_forecast_gco2_kwh between 0 and {{ var("plausible_max_gco2_kwh") }}
+    ) as is_comparable,
 
     (a.sp_start_utc is not null) as is_known_absent_upstream
 

@@ -52,6 +52,29 @@ LOCATIONS: list[tuple[str, float, float]] = [
     ("south_coast", 50.9, -1.4),  # solar, and southern demand
 ]
 
+# D-3 RESOLVED at M4, by the rule fixed in audit/E01 before the numbers were
+# seen: keep a location whose correlation with national wind share exceeds 0.5.
+#
+#   irish_sea       0.726        midlands        0.715
+#   north_sea       0.716        scotland_south  0.652
+#   south_coast     0.589        scotland_north  0.460  <- fails
+#
+# No pair of locations correlated above 0.85 with each other, so the redundancy
+# rule never fired and only the floor did.
+#
+# scotland_north is the least useful despite being the northernmost, and also
+# the least windy of the six at 22.9 km/h mean. 57.5N -4.0 is inland Highlands:
+# Open-Meteo models the mountain interior there, while GB onshore wind capacity
+# sits on coasts and ridgelines. The point measures the wrong Scotland.
+#
+# It stays in LOCATIONS and keeps being ingested — the series is the evidence
+# for this decision and costs little — but it is excluded from the feature set.
+EXCLUDED_FROM_FEATURES: frozenset[str] = frozenset({"scotland_north"})
+
+FEATURE_LOCATIONS: list[str] = [
+    name for name, _, _ in LOCATIONS if name not in EXCLUDED_FROM_FEATURES
+]
+
 LATITUDES = ",".join(str(lat) for _, lat, _ in LOCATIONS)
 LONGITUDES = ",".join(str(lon) for _, _, lon in LOCATIONS)
 

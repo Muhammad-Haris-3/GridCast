@@ -25,6 +25,19 @@ vars:
   maturity_hours: 24
   stability_hours: 6
 
+  # The upper bound of physical plausibility for GB carbon intensity.
+  #
+  # Highest actual observed across eight years is 447 gCO2/kWh; a grid running
+  # entirely on coal would be roughly 900. 800 is deliberately loose — a tight
+  # bound fitted to observed history would fail on a legitimately extreme day
+  # and teach everyone to ignore the test.
+  #
+  # It exists because the ESO forecast field carries 16 corrupt values up to
+  # 13,579 (M4). The design specified a range test on `actual` at 5.1 and it was
+  # never implemented; even implemented, it would have missed this, because the
+  # corruption is in the forecast rather than the outturn.
+  plausible_max_gco2_kwh: 800
+
   # Design doc 6.5 (D-2). PROVISIONAL, pending the weather backfill.
   # step_hold invents nothing; linear interpolation manufactures a value nobody
   # published. Decided by measured backtest error, not by preference.

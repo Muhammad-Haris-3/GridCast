@@ -30,7 +30,6 @@ AUDIT_DIR = Path(__file__).resolve().parent.parent / "audit"
 # an audit that quietly omits what it could not check is worse than one that
 # says so, because the omission looks like a clean result.
 PENDING: dict[str, str] = {
-    "E01": "needs lnd_om_vintage — weather backfill still running",
     "E02": "needs lnd_om_vintage and lnd_ci_genmix",
     "F01": "needs a full lnd_ex_demand backfill for a holiday comparison",
 }
