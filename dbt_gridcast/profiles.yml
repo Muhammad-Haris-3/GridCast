@@ -1,0 +1,19 @@
+# Committed deliberately: it contains no secrets, only environment lookups.
+#
+# Standard PG* variable names are used so that psql, psycopg and dbt all read
+# the same configuration rather than drifting apart.
+
+gridcast:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('PGHOST', 'localhost') }}"
+      user: "{{ env_var('PGUSER', 'postgres') }}"
+      password: "{{ env_var('PGPASSWORD', 'postgres') }}"
+      port: "{{ env_var('PGPORT', '5432') | int }}"
+      dbname: "{{ env_var('PGDATABASE', 'gridcast') }}"
+      schema: marts
+      threads: 4
+      sslmode: "{{ env_var('PGSSLMODE', 'prefer') }}"
+      keepalives_idle: 0

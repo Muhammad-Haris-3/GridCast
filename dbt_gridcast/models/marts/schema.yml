@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: dim_settlement_period
+    description: >
+      The generated half-hourly spine from 2018-05-09 to 60 days ahead.
+      Primary key is sp_start_utc. Correctly produces 46-, 48- and 50-period
+      local days across clock changes.
+    columns:
+      - name: sp_start_utc
+        description: Settlement period start instant, UTC. The primary key everywhere in GridCast.
+        tests:
+          - unique
+          - not_null
+
+      - name: sp_end_utc
+        tests:
+          - not_null
+
+      - name: settlement_date_local
+        description: Local (Europe/London) settlement date. An attribute, never a join key.
+        tests:
+          - not_null
+
+      - name: settlement_period_no
+        description: >
+          Period number within the local settlement day, 1 to 50. Range is
+          asserted by the singular test assert_periods_per_local_day rather
+          than by dbt_utils, which is not a dependency until M3.
+        tests:
+          - not_null
+
+      - name: periods_in_local_day
+        description: 46, 48 or 50. Asserted by the singular test assert_periods_per_local_day.
+        tests:
+          - not_null
+
+      - name: dow
+        description: ISO day of week, 1 = Monday.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5, 6, 7]
+              quote: false
+
+      - name: is_bst
+        tests:
+          - not_null
+
+      - name: is_gb_holiday
+        description: >
+          Placeholder, always false until M2 resolves D-7. is_gb_holiday_resolved
+          reports whether a real calendar has been applied, so no downstream
+          consumer can mistake the placeholder for a populated column.
+        tests:
+          - not_null

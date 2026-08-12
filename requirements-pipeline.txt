@@ -1,0 +1,17 @@
+# Pipeline dependencies: ingestion, transformation, training, scoring.
+# These run in GitHub Actions runners, never in the serving container.
+
+-r requirements-serve.txt
+
+httpx==0.28.1
+tenacity==9.0.0
+pandas==2.2.3
+numpy==2.2.1
+dbt-core==1.9.1
+dbt-postgres==1.9.0
+
+# Modelling and statistics arrive at M4/M6; pinned here so the training
+# environment is reproducible from the first commit.
+scikit-learn==1.6.0
+statsmodels==0.14.4
+scipy==1.15.0

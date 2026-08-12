@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment — never commit credentials (NFR-11)
+.env
+.env.local
+*.pem
+
+# dbt
+dbt_gridcast/target/
+dbt_gridcast/dbt_packages/
+dbt_gridcast/logs/
+# dbt_gridcast/profiles.yml is COMMITTED on purpose: it contains only env_var
+# lookups, no credentials.
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+web/.vercel/
+*.tsbuildinfo
+
+# Data — the warehouse is the source of truth, not the filesystem
+data/
+*.csv
+*.parquet
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NOT ignored, deliberately:
+#   models/      — model artefacts are versioned with the code that made them
+#   seals/       — integrity seals must be externally verifiable from git history

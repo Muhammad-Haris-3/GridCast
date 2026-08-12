@@ -1,0 +1,12 @@
+# Serving dependencies ONLY.
+#
+# The API reads precomputed rows and never trains (SRS FR-29, NFR-6).
+# scikit-learn, statsmodels, pandas and numpy are DELIBERATELY ABSENT.
+# tests/test_serving_deps.py fails the build if any of them appear here,
+# so the constraint cannot erode through one convenient import.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+psycopg[binary]==3.2.3
+pydantic==2.10.4
+pydantic-settings==2.7.0

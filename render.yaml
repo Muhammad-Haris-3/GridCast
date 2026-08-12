@@ -1,0 +1,30 @@
+# Render blueprint for the GridCast serving API.
+#
+# The API reads precomputed rows and never trains (NFR-6), which is what keeps
+# it inside the 512 MB free-tier container. Model training runs in GitHub
+# Actions, where memory is somebody else's problem.
+
+services:
+  - type: web
+    name: gridcast-api
+    runtime: python
+    plan: free
+    region: frankfurt          # closest free region to the GB data it serves
+    buildCommand: pip install -r requirements-serve.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: GRIDCAST_ENV
+        value: production
+      - key: GRIDCAST_COMMIT
+        fromService:
+          type: web
+          name: gridcast-api
+          property: commitId
+      # Set in the Render dashboard, never here:
+      #   GRIDCAST_READONLY_DATABASE_URL — the gridcast_readonly Neon role.
+      # The pipeline URL is deliberately NOT available to this service. If the
+      # API held write credentials, the append-only guarantee would rest on the
+      # API never choosing to use them.
