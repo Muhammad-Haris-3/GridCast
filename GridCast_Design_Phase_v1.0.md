@@ -222,8 +222,23 @@ value per key**:
 ```sql
 SELECT DISTINCT ON (sp_start_utc) ...
 FROM landing.lnd_ci_intensity
-ORDER BY sp_start_utc, fetched_at_utc DESC
+ORDER BY sp_start_utc, fetched_at_utc DESC, landing_id DESC
 ```
+
+> **Amended by M2 (finding B02).** The tiebreak on `landing_id` is not
+> decoration. The Carbon Intensity API returned settlement period
+> `2021-04-19 19:00` **twice within a single response**, with conflicting values
+> — actual 303/forecast 294 against actual 295/forecast 289. Both rows were
+> therefore written in one transaction and share a `fetched_at_utc`.
+>
+> With that tie, `DISTINCT ON` has no defined winner: Postgres may return either
+> row, and may return a different one on a later build. Two otherwise identical
+> warehouse builds could disagree about a published figure, breaking
+> reproducibility (NFR-3) in a way no test comparing a build to itself would
+> catch. `landing_id` is a bigserial — unique, monotonic, never tied — so
+> ordering by it makes "latest" total rather than partial.
+>
+> This applies to **every** `DISTINCT ON` in the project, not only this one.
 
 ### 5.1 `stg_ci_intensity`
 **Grain:** one `sp_start_utc`.
