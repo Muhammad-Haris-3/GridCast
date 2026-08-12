@@ -39,3 +39,7 @@ Thumbs.db
 # NOT ignored, deliberately:
 #   models/      — model artefacts are versioned with the code that made them
 #   seals/       — integrity seals must be externally verifiable from git history
+
+# Stray debugging artefacts
+ci.log
+pytest-output.txt
