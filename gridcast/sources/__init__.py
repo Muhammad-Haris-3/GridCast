@@ -44,8 +44,6 @@ DAILY: tuple[str, ...] = ("om_archive",)
 # Sources switched off until the milestone that needs them. Excluded from
 # ingestion AND from gap-fill: gap detection was the mechanism actually driving
 # the writes, healing seven days of regional on every half-hourly run.
-DEFERRED: tuple[str, ...] = tuple(
-    sorted(name for name, spec in REGISTRY.items() if spec.deferred)
-)
+DEFERRED: tuple[str, ...] = tuple(sorted(name for name, spec in REGISTRY.items() if spec.deferred))
 
 __all__ = ["DAILY", "DEFERRED", "REGISTRY", "SCHEDULED", "Record", "SourceSpec"]
