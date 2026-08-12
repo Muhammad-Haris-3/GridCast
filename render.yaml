@@ -9,7 +9,14 @@ services:
     name: gridcast-api
     runtime: python
     plan: free
-    region: frankfurt          # closest free region to the GB data it serves
+    # Must match the Neon project's region. The database is in AWS us-east-2,
+    # so the API sits in Ohio beside it. Every request the API serves is a
+    # database round trip; splitting them across the Atlantic would add ~100ms
+    # to each one, on a free instance that is already cold-starting.
+    #
+    # The data is British, but the latency that matters is API-to-database, not
+    # API-to-source: ingestion runs in GitHub Actions, not here.
+    region: ohio
     buildCommand: pip install -r requirements-serve.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health

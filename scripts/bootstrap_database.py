@@ -178,9 +178,42 @@ def main() -> int:
     ro_url = swap_credentials(url, "gridcast_readonly", ro_password)
 
     with psycopg.connect(url) as conn, conn.cursor() as cur:
-        cur.execute("SHOW timezone")
-        tz = cur.fetchone()[0]
-        (ok if tz == "UTC" else fail)(f"database timezone = {tz}")
+        # Check what the zone DOES, not what it is called.
+        #
+        # Postgres reports the zero-offset zone as 'UTC' on some servers and
+        # 'GMT' on others (Neon); both are correct and identical. Comparing the
+        # name would fail on a perfectly good server.
+        #
+        # But a pure offset check is not enough either: Europe/London is also
+        # zero-offset in January and then shifts by an hour in July. So the zone
+        # is probed at two instants six months apart, and must be zero at both.
+        cur.execute("""
+            SELECT current_setting('TimeZone') AS zone,
+                   (timestamptz '2026-01-15 12:00:00+00' AT TIME ZONE current_setting('TimeZone'))
+                       = timestamp '2026-01-15 12:00:00' AS winter_zero,
+                   (timestamptz '2026-07-15 12:00:00+00' AT TIME ZONE current_setting('TimeZone'))
+                       = timestamp '2026-07-15 12:00:00' AS summer_zero
+        """)
+        zone, winter_zero, summer_zero = cur.fetchone()
+        if winter_zero and summer_zero:
+            ok(f"session timezone = {zone} (zero offset year-round)")
+        else:
+            fail(f"session timezone = {zone} (offset is not zero year-round)")
+
+        # Separately, confirm ALTER DATABASE actually persisted. A pooled
+        # connection can be handed a backend that started before it ran, so the
+        # session value alone does not prove the default was stored.
+        cur.execute("""
+            SELECT unnest(setconfig)
+              FROM pg_db_role_setting s
+              JOIN pg_database d ON d.oid = s.setdatabase
+             WHERE d.datname = current_database()
+        """)
+        stored = [r[0] for r in cur.fetchall()]
+        if any(c.lower() == "timezone=utc" for c in stored):
+            ok("database default timezone = UTC (persisted)")
+        else:
+            fail(f"database default timezone not stored; found {stored or 'nothing'}")
 
         cur.execute("SELECT count(*) FROM marts.dim_settlement_period")
         periods = cur.fetchone()[0]

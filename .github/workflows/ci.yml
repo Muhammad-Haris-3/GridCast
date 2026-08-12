@@ -19,7 +19,10 @@ jobs:
     # database grants, and grants cannot be tested against a fake.
     services:
       postgres:
-        image: postgres:16
+        # Matches the Neon production server (18.x). Testing the schema on a
+        # different major version than it runs on is a gap worth not having,
+        # particularly for the grants and check constraints in sql/003 and 004.
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -42,9 +45,9 @@ jobs:
       PGSSLMODE: disable
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
@@ -68,15 +71,29 @@ jobs:
         run: dbt build --profiles-dir .
 
       - name: Tests, including the append-only guarantees
-        run: pytest -v
+        run: |
+          set -o pipefail
+          pytest -v -rA 2>&1 | tee pytest-output.txt
+
+      # GitHub requires sign-in to read job logs, even on a public repository,
+      # but annotations are readable anonymously. Publishing the failure into an
+      # annotation means anyone can see WHY a build broke without credentials —
+      # which is the same principle the rest of this project runs on.
+      - name: Surface the failure
+        if: failure()
+        run: |
+          DETAIL=$(tail -60 pytest-output.txt \
+            | sed 's/%/%25/g; s/\r//g' \
+            | awk '{printf "%s%%0A", $0}')
+          echo "::error title=pytest failed::$DETAIL"
 
   web:
     name: Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
