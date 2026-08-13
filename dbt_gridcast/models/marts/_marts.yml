@@ -53,6 +53,17 @@ models:
       - name: sp_start_utc
         tests: [unique, not_null]
 
+  - name: fct_weather_hour
+    description: >
+      Typed weather at its natural hourly grain. Materialised so that the raw
+      JSON in lnd_om_vintage can be pruned — the same information typed is
+      roughly 50 bytes rather than 433 per row.
+    columns:
+      - name: location_id
+        tests: [not_null]
+      - name: hour_start_utc
+        tests: [not_null]
+
   - name: fct_weather_period
     columns:
       - name: weather_key

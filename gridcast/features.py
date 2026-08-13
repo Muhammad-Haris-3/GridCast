@@ -121,8 +121,9 @@ def load_mix_history() -> pd.DataFrame:
 def load_weather_history() -> pd.DataFrame:
     """Weather from the FORECAST VINTAGE, pivoted wide by location.
 
-    Drawn from `fct_weather_period`, which reads `stg_om_vintage` — past
-    forecasts as they were issued. Never the archive.
+    Drawn from `fct_weather_period`, which reads the materialised
+    `fct_weather_hour` table — typed weather extracted from `lnd_om_vintage`.
+    Never the archive.
     """
     settings = get_settings()
     locations = tuple(FEATURE_LOCATIONS)

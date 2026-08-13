@@ -34,7 +34,11 @@
 */
 
 with vintage as (
-    select * from {{ ref('stg_om_vintage') }}
+    -- Reads the materialised hourly table, not staging. That indirection is
+    -- what allows lnd_om_vintage to be pruned: nothing else touches the raw
+    -- payloads, so once they are typed into fct_weather_hour the 184 MB of
+    -- JSON behind them is dead weight.
+    select * from {{ ref('fct_weather_hour') }}
 ),
 
 periods as (

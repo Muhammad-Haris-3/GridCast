@@ -52,6 +52,41 @@ jobs:
         if: always()
         run: python -m gridcast.gapfill --lookback 30 --detect-only
 
+      # Prune old landing rows to stay within Neon's 512 MB ceiling.
+      #
+      # The pipeline (every 30 min) runs dbt build, which materialises
+      # fct_weather_hour. Once that table holds the typed weather, the raw
+      # JSON in lnd_om_vintage is dead weight. This step deletes it daily,
+      # keeping only a short window for revision capture.
+      #
+      # The script verifies fct_weather_hour exists before deleting anything.
+      # Rebuild the warehouse BEFORE pruning, never after.
+      #
+      # The prune is only safe because the typed marts already hold what is
+      # being discarded. Building first guarantees that is true at the moment
+      # the rows are released; pruning first leaves a window where the marts are
+      # stale and the raw data is already gone.
+      #
+      # Every model that exists so its source can be pruned is incremental, so
+      # this build accumulates rather than rebuilds. That is load-bearing: the
+      # same step run against a table-materialised model destroyed 434,592 rows
+      # of weather history, because a table model is rebuilt from a source that
+      # by then held only the retention window.
+      - name: Rebuild warehouse before pruning
+        working-directory: dbt_gridcast
+        run: dbt build --profiles-dir .
+        env:
+          PGHOST: ${{ secrets.PGHOST }}
+          PGUSER: ${{ secrets.PGUSER }}
+          PGPASSWORD: ${{ secrets.PGPASSWORD }}
+          PGDATABASE: ${{ secrets.PGDATABASE }}
+          PGSSLMODE: require
+
+      # Only runs if the build above succeeded. `if: always()` here would prune
+      # on the strength of marts that failed to refresh.
+      - name: Prune landing tables
+        run: python scripts/prune_landing.py --execute
+
       # Seal any newly closed month and verify every existing seal.
       #
       # Runs last and is allowed to fail the workflow. A seal mismatch means

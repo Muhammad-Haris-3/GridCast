@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import forecast as forecast_router
+from api.routers import plan as plan_router
 from api.routers import status as status_router
 from gridcast.config import get_settings
 
@@ -51,6 +52,7 @@ app.add_middleware(
 
 app.include_router(status_router.router)
 app.include_router(forecast_router.router)
+app.include_router(plan_router.router)
 
 
 @app.get("/", tags=["meta"])
@@ -61,6 +63,7 @@ def root() -> dict[str, str]:
         "health": "/health",
         "status": "/v1/status",
         "forecast": "/v1/forecast/current",
+        "plan": "/v1/plan",
         "accuracy": "/v1/accuracy",
         "integrity": "/v1/integrity",
     }
