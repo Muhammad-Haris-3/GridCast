@@ -77,8 +77,14 @@ container, and it is also simply the correct production pattern.
 | Surface | URL |
 |---|---|
 | Application | https://grid-cast-sigma.vercel.app |
+| **When should I run it?** | https://grid-cast-sigma.vercel.app/plan |
+| How wrong were we? | https://grid-cast-sigma.vercel.app/accuracy |
 | Pipeline status | https://grid-cast-sigma.vercel.app/status |
 | API | https://gridcast-api-xhca.onrender.com |
+
+**Start here:** [DECISION_MEMO.md](DECISION_MEMO.md) — the finding, in plain
+English, in two pages. [METHODS.md](METHODS.md) — how the numbers are produced,
+with the failures listed first.
 
 The API runs on a free instance that sleeps after inactivity, so the first
 request in a while takes 30-60 seconds to wake it. The status page says so
@@ -92,18 +98,22 @@ path from browser to API to warehouse works before any analysis exists.
 | Milestone | State |
 |---|---|
 | M0 Foundation & walking skeleton | ✅ Complete — deployed |
-| M1 Ingestion & backfill | Next |
-| M2 Data-quality audit | Pending |
-| M3 Warehouse | Pending |
-| M4 Baselines & backtesting harness | Pending |
-| M5 Live forecasting loop | Pending — *the defensible stopping point* |
-| M6 Modelling depth | Pending |
-| M7 Champion/challenger & monitoring | Pending |
-| M8 Product & communication | Pending |
+| M1 Ingestion & backfill | ✅ Complete |
+| M2 Data-quality audit | ✅ Complete |
+| M3 Warehouse | ✅ Complete |
+| M4 Baselines & backtesting harness | ✅ Complete |
+| M5 Live forecasting loop | ✅ Complete — *the defensible stopping point* |
+| M6 Modelling depth | ✅ Complete |
+| M7 Champion/challenger & monitoring | Waiting on data — the pre-registered rule needs ~1,440 scored points per horizon group, about 10 days of live operation |
+| M8 Product & communication | ✅ Planner, decision memo, methods |
 
-There are deliberately **no forecasts and no accuracy figures yet**. Publishing
-one before a single out-of-sample score exists would be precisely the behaviour
-this project is built to avoid.
+Four models issue forecasts every run — a seasonal-naive champion, a persistence
+baseline, a gradient-boosting challenger, and National Grid ESO's own forecast
+recorded at the horizon we received it.
+
+**No accuracy figures are published yet.** A forecast becomes scoreable about a
+day after it is issued, and the accuracy page refuses to print a number until a
+horizon group holds 200 scored points. It reports how far off that is instead.
 
 ---
 
