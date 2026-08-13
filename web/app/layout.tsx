@@ -23,6 +23,7 @@ export default function RootLayout({
             <Link href="/plan">Plan</Link>
             <Link href="/accuracy">Accuracy</Link>
             <Link href="/status">Status</Link>
+            <Link href="/about">About</Link>
           </nav>
         </header>
         <main>{children}</main>
