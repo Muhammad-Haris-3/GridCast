@@ -75,19 +75,47 @@ export type PlanWindow = {
 };
 
 export type PlanCounterfactual = {
-  mean_gco2_kwh: number;
-  saving_gco2_kwh: number;
-  saving_pct: number;
-  co2_saved_g: number;
+  mean_gco2_kwh?: number;
+  saving_gco2_kwh?: number;
+  saving_pct?: number;
+  co2_saved_g?: number;
+  // Pessimistic and optimistic ends of the saving, from the forecast's own
+  // q10/q90. The lower bound can be negative — the recommendation turning out
+  // worse than the alternative — and that is shown rather than clipped.
+  saving_gco2_kwh_range?: [number, number];
+  co2_saved_g_range?: [number, number];
+  could_be_worse?: boolean;
   start_utc?: string;
   end_utc?: string;
+  note?: string;
+};
+
+// The dirtiest feasible window. Deliberately NOT a counterfactual: nobody runs
+// a load at the worst hour on purpose, so a saving measured against it is not a
+// saving anyone would make.
+export type PlanUpperBound = {
+  mean_gco2_kwh: number;
+  start_utc: string;
+  end_utc: string;
+  saving_gco2_kwh: number;
+  note: string;
+};
+
+export type PlanHitRate = {
+  available: boolean;
+  note: string;
+  hit_rate?: number;
+  decisions?: number;
+  hits?: number;
+  baseline?: number;
 };
 
 export type PlanConfidence = {
   horizon_group: string;
   mae_gco2_kwh?: number;
   n?: number;
-  note: string;
+  note?: string;
+  hit_rate?: PlanHitRate;
 };
 
 export type PlanResult = {
@@ -99,9 +127,13 @@ export type PlanResult = {
   best_window?: PlanWindow;
   counterfactuals?: {
     now: PlanCounterfactual;
-    worst: PlanCounterfactual;
+    // The expected result of picking a feasible time at random — what you get
+    // by not thinking about it, and the honest baseline.
     average: PlanCounterfactual;
+    // 03:00 local, the folk heuristic. Can be negative on a wind-and-solar grid.
+    overnight: PlanCounterfactual;
   };
+  upper_bound?: PlanUpperBound;
   all_periods?: PlanPeriod[];
   confidence?: PlanConfidence;
   detail?: string;
