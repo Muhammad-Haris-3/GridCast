@@ -36,18 +36,53 @@ export type SystemStatus = {
   spine: SpineSummary;
   recent_runs: RunLogEntry[];
   detail?: string;
+  diagnosis?: string;
+  driver_message?: string;
 };
+
+/** Why the data is missing, in one sentence, or null if the API itself is down.
+ *
+ * Every page that cannot load data used to blame a sleeping free-tier
+ * container. That is one cause among many and it was the wrong one during the
+ * outage this was written in: the API was up and answering, and the database
+ * was refusing it. Telling a reader the service is asleep when it is awake
+ * sends them to wait for something that will not happen. */
+export async function unavailableReason(): Promise<string | null> {
+  const status = await getStatus();
+  if (!status) return null; // The API really is down; the caller's default fits.
+  if (status.diagnosis) return status.diagnosis;
+  if (status.warnings.length > 0) return status.warnings[0];
+  if (status.database === "ok") {
+    // Both layers up and the view still empty. Saying "it is waking" here
+    // would send the reader to reload for something a reload cannot fix.
+    return (
+      "The API and the database are both up, so this is not a cold start. " +
+      "This view's data has not been produced yet — the pipeline status page " +
+      "shows the most recent runs."
+    );
+  }
+  return null;
+}
 
 export async function getStatus(): Promise<SystemStatus | null> {
   try {
     const response = await fetch(`${API_BASE}/v1/status`, {
-      // Status is a live health surface; a cached one would be worse than none.
-      cache: "no-store",
+      // Status is a live health surface, so this window is short — but it is
+      // not zero any more. Under no-store every visitor, and every refresh by
+      // the same visitor, became its own read of the database. That is a poor
+      // trade at the best of times and it helped exhaust the transfer
+      // allowance, which took the page down entirely. A health surface that
+      // is 60 seconds stale beats one that is 503.
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(60_000),
     });
     if (!response.ok) return null;
     return (await response.json()) as SystemStatus;
-  } catch {
+  } catch (e) {
+    // Logged, not swallowed. Every page falls back to this function to explain
+    // itself, so when it is the thing that failed the reader gets the generic
+    // message and nobody finds out why. This lands in the serving logs.
+    console.error("getStatus failed:", e);
     return null;
   }
 }
@@ -151,7 +186,10 @@ export async function getPlan(
       appliance_kwh: applianceKwh.toString(),
     });
     const response = await fetch(`${API_BASE}/v1/plan?${params}`, {
-      cache: "no-store",
+      // Cached per parameter combination. The underlying forecasts only change
+      // when the pipeline issues, every 30 minutes, so a plan recomputed per
+      // visitor was reading the same rows to produce the same answer.
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(60_000),
     });
     if (!response.ok) return null;

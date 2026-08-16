@@ -121,3 +121,13 @@ def test_root_lists_entry_points() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["service"] == "gridcast"
+
+
+def test_a_missing_table_is_not_reported_as_a_missing_database() -> None:
+    """Both messages end in "does not exist" and the fixes are unrelated: one
+    is a corrected URL, the other is a dbt build against a working one."""
+    relation = _diagnose(RuntimeError('relation "marts.fct_intensity_period" does not exist'))
+    role = _diagnose(RuntimeError('FATAL: role "gridcast_readonly" does not exist'))
+
+    assert "dbt build" in relation
+    assert "dbt build" not in role

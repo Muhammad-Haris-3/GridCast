@@ -1,6 +1,8 @@
-import { API_BASE } from "@/lib/api";
+import { API_BASE, unavailableReason } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+// Accuracy changes only as forecasts mature and are scored, hours behind the
+// clock. There is nothing to gain from rendering it per visitor.
+export const revalidate = 900;
 
 type AccuracyRow = {
   model_version: string;
@@ -45,7 +47,10 @@ const HORIZON_LABEL: Record<string, string> = {
 async function get<T>(path: string): Promise<T | null> {
   try {
     const r = await fetch(`${API_BASE}${path}`, {
-      cache: "no-store",
+      // Accuracy moves only as forecasts mature and get scored, which is hours
+      // behind the clock. Fifteen minutes of staleness is invisible here and
+      // collapses every visitor onto one read.
+      next: { revalidate: 900 },
       signal: AbortSignal.timeout(60_000),
     });
     return r.ok ? ((await r.json()) as T) : null;
@@ -61,14 +66,17 @@ export default async function AccuracyPage() {
   ]);
 
   if (!accuracy || !integrity) {
+    // The status endpoint answers even when the database does not, so the
+    // reason can be the real one rather than an assumption about sleep.
+    const reason = await unavailableReason();
     return (
       <>
         <h1>How wrong were we?</h1>
         <div className="card">
-          <span className="pill warn">API unreachable</span>
+          <span className="pill warn">Not available</span>
           <p>
-            The free-tier API sleeps after inactivity and can take up to a
-            minute to wake. Reload in a moment.
+            {reason ??
+              "The free-tier API sleeps after inactivity and can take up to a minute to wake. Reload in a moment."}
           </p>
         </div>
       </>

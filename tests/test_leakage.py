@@ -328,3 +328,31 @@ def test_horizon_is_a_feature_and_counts_from_the_anchor() -> None:
     )
 
     assert frame["horizon_periods"].tolist() == list(range(1, 97))
+
+
+def test_the_serving_window_covers_every_feature_lookback() -> None:
+    """Issuing loads a bounded window; the features must fit inside it.
+
+    Serving stopped reading the whole archive on every issue because doing so
+    spent a month of the database's transfer allowance in under a week. The
+    risk that trade introduces is silent: a new lag longer than the window
+    would still build, still validate, and quietly return NaN for every
+    forecast instead of raising. This is the tripwire for that.
+    """
+    from gridcast.features import FEATURE_REACH_HOURS, SERVING_HISTORY_DAYS
+
+    assert SERVING_HISTORY_DAYS * 24 > FEATURE_REACH_HOURS, (
+        f"features reach {FEATURE_REACH_HOURS}h back but serving loads only "
+        f"{SERVING_HISTORY_DAYS * 24}h. Raise SERVING_HISTORY_DAYS."
+    )
+
+
+def test_the_feature_reach_is_derived_from_the_lags_themselves() -> None:
+    """A hand-typed reach is a reach that goes stale the next time a lag moves."""
+    from gridcast.features import (
+        FEATURE_REACH_HOURS,
+        INTENSITY_LAG_HOURS,
+        ROLLING_WINDOWS_HOURS,
+    )
+
+    assert max(*INTENSITY_LAG_HOURS, *ROLLING_WINDOWS_HOURS) == FEATURE_REACH_HOURS

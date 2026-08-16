@@ -161,6 +161,15 @@ def _diagnose(exc: Exception) -> str:
             "is wrong or stale — most likely the password was rotated and the "
             "serving environment still holds the old one."
         )
+    # A missing table is not a missing database, and the fix is a dbt build
+    # rather than a corrected URL. Checked first because the message for both
+    # ends in "does not exist".
+    if "relation" in text and "does not exist" in text:
+        return (
+            "The database answered but a table the API reads is not there. The "
+            "warehouse has not been built against this database yet — run "
+            "dbt build. The connection itself is fine."
+        )
     if "does not exist" in text:
         return (
             "The role or database named in GRIDCAST_READONLY_DATABASE_URL does not "

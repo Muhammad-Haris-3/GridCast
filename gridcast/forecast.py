@@ -139,7 +139,23 @@ def load_eso_forecast(anchor: datetime) -> dict[datetime, float]:
         return {row["sp_start_utc"]: float(row["eso_forecast"]) for row in cur.fetchall()}
 
 
-def load_actuals() -> pd.Series:
+# How much observed history an issuing run loads.
+#
+# This one is not purely a transfer saving: the series feeds
+# empirical_error_quantiles, so the window is a modelling input and narrowing
+# it changes the published intervals. It is set deliberately.
+#
+# A year gives 17,520 samples per horizon band, which is far past the point
+# where a quantile estimate stops moving. The archive reaches back to 2018, and
+# the grid of 2018 is not the grid being forecast — its error distribution
+# belongs to a system with substantially more coal in it. Calibrating today's
+# intervals on it is not more information, it is older information.
+#
+# Set to None to restore the full archive.
+ERROR_HISTORY_DAYS: int | None = 365
+
+
+def load_actuals(since: datetime | None = None) -> pd.Series:
     """The observed series. Matured periods only.
 
     Forecasting from an unmatured actual would mean building on a number the
@@ -148,13 +164,17 @@ def load_actuals() -> pd.Series:
     """
     settings = get_settings()
     with connect(url=settings.database_url, readonly=True) as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT sp_start_utc, actual_gco2_kwh
               FROM marts.fct_intensity_period
              WHERE actual_gco2_kwh IS NOT NULL
                AND is_matured
+               AND (%s::timestamptz IS NULL OR sp_start_utc >= %s)
              ORDER BY sp_start_utc
-        """)
+            """,
+            (since, since),
+        )
         rows = cur.fetchall()
 
     frame = pd.DataFrame(rows)
@@ -288,15 +308,21 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
     two implementations drift and nothing compares them.
     """
     from gridcast.features import (
+        SERVING_HISTORY_DAYS,
         build_features,
         load_intensity_history,
         load_mix_history,
         load_weather_history,
     )
 
-    intensity = load_intensity_history()
-    mix = load_mix_history()
-    weather = load_weather_history()
+    # Issuing reaches 168 hours back. Loading the rest of the archive 48 times
+    # a day is what spent a month of the database's transfer allowance in under
+    # a week; see SERVING_HISTORY_DAYS.
+    since = anchor - timedelta(days=SERVING_HISTORY_DAYS)
+
+    intensity = load_intensity_history(since)
+    mix = load_mix_history(since)
+    weather = load_weather_history(since)
 
     frame = build_features(
         run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
@@ -437,7 +463,9 @@ def main() -> int:
     settings = get_settings()
     print(f"database: {settings.database_url.split('@')[-1].split('?')[0] or 'NOT CONFIGURED'}")
 
-    actual = load_actuals()
+    actual = load_actuals(
+        datetime.now(UTC) - timedelta(days=ERROR_HISTORY_DAYS) if ERROR_HISTORY_DAYS else None
+    )
     if actual.empty:
         print("no matured actuals available; nothing to forecast from")
         return 1

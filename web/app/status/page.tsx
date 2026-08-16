@@ -1,6 +1,9 @@
 import { getStatus, API_BASE } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+// Rendered once a minute and shared, rather than once per visitor.
+// force-dynamic meant every hit on every page was its own database read, which
+// is how a public site helped spend a month of transfer allowance in a week.
+export const revalidate = 60;
 
 function formatUtc(value: string | null): string {
   if (!value) return "—";

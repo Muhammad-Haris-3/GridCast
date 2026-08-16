@@ -45,6 +45,26 @@ from gridcast.sources.open_meteo import FEATURE_LOCATIONS  # noqa: E402
 INTENSITY_LAG_HOURS = (0, 24, 48, 168)
 ROLLING_WINDOWS_HOURS = (24, 168)
 
+# The furthest back build_features can reach. Derived, not typed in, so a new
+# lag cannot silently outrun the window that serving loads.
+FEATURE_REACH_HOURS = max(*INTENSITY_LAG_HOURS, *ROLLING_WINDOWS_HOURS)
+
+# How much history an ISSUING run loads. Training and backtesting still read
+# everything — they are measuring the past, so they need it.
+#
+# A forecast does not. It reaches 168 hours back and no further, so the rest of
+# the archive is fetched, parsed into a DataFrame, and dropped. That cost every
+# issue: three unbounded SELECTs against the marts, 48 times a day, against a
+# database whose free tier meters bytes read. It exhausted a month of transfer
+# allowance in under a week and took the whole site down with it, which is a
+# lot of damage for rows nothing was going to look at.
+#
+# 30 days rather than 7: the lag takes the last row at or before its stamp, so
+# a gap wider than the window would leave the feature NaN where the unbounded
+# read found a real value. Four times the reach absorbs any outage worth
+# forecasting through, and still loads a small fraction of the archive.
+SERVING_HISTORY_DAYS = 30
+
 
 # The publication lag assumed for backfilled rows. PROVISIONAL.
 #
@@ -65,22 +85,29 @@ ROLLING_WINDOWS_HOURS = (24, 168)
 RECONSTRUCTED_LAG = timedelta(hours=24)
 
 
-def load_intensity_history() -> pd.DataFrame:
+def load_intensity_history(since: datetime | None = None) -> pd.DataFrame:
     """Matured actuals with the instant each became knowable to us.
 
     `knowable_effective_utc` is the true fetch time for rows observed live, and
     a reconstructed estimate for rows loaded by backfill. Which is which stays
     visible in `knowable_is_reconstructed`, because results built on the two
     are reported in separate columns and never pooled (design 8.3).
+
+    `since` bounds the read for callers that only need recent history. Default
+    None keeps the full archive, because training and backtesting measure it.
     """
     settings = get_settings()
     with connect(url=settings.database_url, readonly=True) as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT sp_start_utc, actual_gco2_kwh, knowable_at_utc, knowable_is_reconstructed
               FROM marts.fct_intensity_period
              WHERE actual_gco2_kwh IS NOT NULL
+               AND (%s::timestamptz IS NULL OR sp_start_utc >= %s)
              ORDER BY sp_start_utc
-        """)
+            """,
+            (since, since),
+        )
         rows = cur.fetchall()
 
     frame = pd.DataFrame(rows)
@@ -99,14 +126,18 @@ def load_intensity_history() -> pd.DataFrame:
     return frame
 
 
-def load_mix_history() -> pd.DataFrame:
+def load_mix_history(since: datetime | None = None) -> pd.DataFrame:
     settings = get_settings()
     with connect(url=settings.database_url, readonly=True) as conn, conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT sp_start_utc, wind_perc, solar_perc, low_carbon_perc, knowable_at_utc
               FROM marts.fct_mix_wide
+             WHERE (%s::timestamptz IS NULL OR sp_start_utc >= %s)
              ORDER BY sp_start_utc
-        """)
+            """,
+            (since, since),
+        )
         rows = cur.fetchall()
 
     frame = pd.DataFrame(rows)
@@ -118,7 +149,7 @@ def load_mix_history() -> pd.DataFrame:
     return frame.set_index("sp_start_utc")
 
 
-def load_weather_history() -> pd.DataFrame:
+def load_weather_history(since: datetime | None = None) -> pd.DataFrame:
     """Weather from the FORECAST VINTAGE, pivoted wide by location.
 
     Drawn from `fct_weather_period`, which reads the materialised
@@ -134,9 +165,10 @@ def load_weather_history() -> pd.DataFrame:
                    wind_speed_100m_kmh, temperature_2m_c, shortwave_radiation_wm2
               FROM marts.fct_weather_period
              WHERE location_id = ANY(%s)
+               AND (%s::timestamptz IS NULL OR sp_start_utc >= %s)
              ORDER BY sp_start_utc
             """,
-            (list(locations),),
+            (list(locations), since, since),
         )
         rows = cur.fetchall()
 

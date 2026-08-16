@@ -1,6 +1,8 @@
-import { getPlan } from "@/lib/api";
+import { getPlan, unavailableReason } from "@/lib/api";
 
-export const dynamic = "force-dynamic";
+// This page reads searchParams, so Next renders it dynamically whatever is
+// declared here. The saving is in the fetch itself, which caches per parameter
+// combination — see getPlan.
 
 const LONDON: Intl.DateTimeFormatOptions = {
   timeZone: "Europe/London",
@@ -30,13 +32,16 @@ export default async function PlanPage({
   const plan = await getPlan(duration, within, kwh);
 
   if (!plan || plan.detail || !plan.best_window) {
+    // Ask the status endpoint why, rather than guessing. It answers even when
+    // the database does not, and it names the actual cause.
+    const reason = plan?.detail ?? (await unavailableReason());
     return (
       <>
         <h1>When should I run it?</h1>
         <div className="card">
           <span className="pill warn">Not available</span>
           <p>
-            {plan?.detail ??
+            {reason ??
               "The API is unreachable. On the free tier it sleeps after inactivity and can take a minute to wake."}
           </p>
         </div>
