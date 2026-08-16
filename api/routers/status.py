@@ -77,7 +77,27 @@ def _diagnose(exc: Exception) -> str:
             "reached. Re-enable the endpoint in the Neon console; nothing in "
             "GRIDCAST_READONLY_DATABASE_URL needs to change."
         )
-    if "quota" in text or "exceeded" in text or "limit is reached" in text:
+    # Before the plan-limit branch: "connection limit exceeded" is a full
+    # server, not a spent plan, and the two need opposite responses. A bare
+    # "exceeded" match would send an operator to the billing page over a
+    # transient pool exhaustion.
+    if (
+        "too many connections" in text
+        or "remaining connection slots" in text
+        or "connection limit" in text
+    ):
+        return (
+            "The database is refusing new connections because its limit is full. "
+            "The serving URL should be the -pooler endpoint on Neon."
+        )
+    if (
+        "quota" in text
+        or "compute time" in text
+        or "plan limit" in text
+        or "usage limit" in text
+        or "exceeded the limit" in text
+        or "storage limit" in text
+    ):
         return (
             "Neon refused the connection on a plan limit — the free tier's "
             "compute hours or storage are spent. Check usage in the Neon "
@@ -93,11 +113,6 @@ def _diagnose(exc: Exception) -> str:
         return (
             "The serving role exists but has had LOGIN revoked. Restore it with "
             "ALTER ROLE gridcast_readonly LOGIN."
-        )
-    if "too many connections" in text or "remaining connection slots" in text:
-        return (
-            "The database is refusing new connections because its limit is full. "
-            "The serving URL should be the -pooler endpoint on Neon."
         )
     if "network is unreachable" in text or "no route to host" in text:
         return (
