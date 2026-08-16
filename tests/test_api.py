@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
-from api.routers.status import _diagnose
+from api.routers.status import _diagnose, _redact
 
 client = TestClient(app)
 
@@ -88,6 +88,21 @@ def test_an_unrecognised_cause_still_says_something_usable() -> None:
     assert "18.226.144.228" not in diagnosis
     assert "neon.tech" not in diagnosis
     assert "5432" not in diagnosis
+
+
+def test_the_published_driver_message_is_redacted() -> None:
+    """The status payload carries the driver's words so the diagnosis can be
+    checked against them. It is public, so it carries none of the address."""
+    leaky = (
+        'connection to server at "ep-secret-pooler.us-east-2.aws.neon.tech" '
+        "(18.226.144.228), port 5432 failed: FATAL: sorry, too many clients"
+    )
+    redacted = _redact(RuntimeError(leaky))
+
+    assert "too many clients" in redacted
+    assert "18.226.144.228" not in redacted
+    assert "neon.tech" not in redacted
+    assert "5432" not in redacted
 
 
 def test_root_lists_entry_points() -> None:

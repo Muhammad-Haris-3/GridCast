@@ -229,6 +229,14 @@ def status() -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 — degrade, do not 500
         payload["detail"] = type(exc).__name__
         payload["diagnosis"] = _diagnose(exc)
+        # The diagnosis is a keyword match, and a keyword match can be wrong.
+        # It read one outage as a spent plan on the strength of the word
+        # "exceeded", which is also how a server says its connection pool is
+        # full. Publishing the redacted message alongside the interpretation
+        # means the reader can check the second against the first instead of
+        # taking it on trust — and it costs one more deploy cycle to find out
+        # nothing when the classifier is right.
+        payload["driver_message"] = _redact(exc)
         payload["warnings"].append(payload["diagnosis"])
         return payload
 
