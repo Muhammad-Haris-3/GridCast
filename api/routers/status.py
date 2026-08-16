@@ -205,16 +205,19 @@ def health() -> dict[str, Any]:
 def status() -> dict[str, Any]:
     """Pipeline health: spine coverage, recent runs, and role configuration.
 
-    At M0 the only populated surface is the spine. Ingestion arrives at M1 and
-    the run list fills in then; an empty run list here is the honest answer,
-    not an error.
+    An empty run list is the honest answer rather than an error: the run log
+    table exists and is written by the pipeline, so nothing in it means nothing
+    has run since the retention window, not that the surface is broken.
     """
     settings = get_settings()
 
     payload: dict[str, Any] = {
         "env": settings.env,
         "commit": settings.build_id,
-        "milestone": "M5 — live forecasting loop",
+        # A literal, and it goes stale silently: the status page prints it
+        # verbatim, so it said "M5" for three milestones after M5 shipped.
+        # Move it with the milestone table in README.md.
+        "milestone": "M8 — product and communication",
         "serving_host": settings.serving_host,
         "database": "unreachable",
         "readonly_role_in_use": settings.readonly_role_in_use,
