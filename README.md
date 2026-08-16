@@ -92,8 +92,10 @@ rather than showing a broken screen.
 
 ## Status
 
-**M0 complete — walking skeleton, deployed and verified in production.** The
-path from browser to API to warehouse works before any analysis exists.
+**M8 complete — the live loop, the planner, and the write-ups are deployed.**
+M7 is the one milestone still open, and it is waiting on data rather than on
+code: the pre-registered promotion rule cannot be evaluated until enough
+forecasts have been scored.
 
 | Milestone | State |
 |---|---|
