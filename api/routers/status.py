@@ -90,18 +90,39 @@ def _diagnose(exc: Exception) -> str:
             "The database is refusing new connections because its limit is full. "
             "The serving URL should be the -pooler endpoint on Neon."
         )
+    # Which allowance is spent decides what to do about it, and Neon says
+    # which. Guessing "compute hours or storage" at a data-transfer quota sent
+    # the first reading of this outage at the wrong two numbers.
+    if "data transfer" in text:
+        return (
+            "The project's data transfer quota is spent — bytes read out of the "
+            "database, not storage and not compute hours. It resets with the "
+            "billing period; until then only an upgrade clears it. Everything "
+            "that reads draws on it: the serving API, the scheduled pipeline, "
+            "and any job that pulls whole tables to a runner."
+        )
+    if "compute time" in text or "compute quota" in text:
+        return (
+            "The project's compute hours are spent. It resets with the billing "
+            "period; until then only an upgrade clears it. Suspending the "
+            "compute sooner when idle is what reduces it."
+        )
+    if "storage" in text and ("quota" in text or "exceeded" in text):
+        return (
+            "The project's storage allowance is spent. Unlike the transfer and "
+            "compute quotas this does not reset — it needs data removed or a "
+            "larger plan. scripts/prune_landing.py is what trims it."
+        )
     if (
         "quota" in text
-        or "compute time" in text
         or "plan limit" in text
         or "usage limit" in text
         or "exceeded the limit" in text
-        or "storage limit" in text
     ):
         return (
-            "Neon refused the connection on a plan limit — the free tier's "
-            "compute hours or storage are spent. Check usage in the Neon "
-            "console. Retrying will not clear it and the URL is not at fault."
+            "Neon refused the connection on a plan limit, without naming which "
+            "one. Check the project's usage in the Neon console. Retrying will "
+            "not clear it and the URL is not at fault."
         )
     if "console request failed" in text or "control plane" in text:
         return (

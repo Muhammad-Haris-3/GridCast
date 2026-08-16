@@ -43,7 +43,19 @@ def test_status_degrades_instead_of_failing() -> None:
         # which is how the status page came to report an unknown cause while
         # the driver knew exactly what it was.
         ("ERROR: The endpoint has been disabled. Enable it in the console", "disabled"),
-        ("ERROR: Your project has exceeded the compute time quota", "plan limit"),
+        # Neon names which allowance is spent, and each one needs a different
+        # answer: transfer and compute reset with the billing period, storage
+        # does not. The first reading of the outage below guessed "compute
+        # hours or storage" at a data transfer quota and sent the operator to
+        # the wrong two numbers.
+        (
+            "ERROR: Your project has exceeded the data transfer quota. "
+            "Upgrade your plan to increase limits.",
+            "bytes read out of the database",
+        ),
+        ("ERROR: Your project has exceeded the compute time quota", "compute hours are spent"),
+        ("ERROR: storage quota exceeded for this project", "does not reset"),
+        ("ERROR: the account usage limit was reached", "without naming which"),
         ("ERROR: Console request failed with status 500", "control-plane"),
         ('FATAL: role "gridcast_readonly" is not permitted to log in', "LOGIN"),
         ("FATAL: too many connections for role", "pooler"),
