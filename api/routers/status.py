@@ -103,9 +103,9 @@ def _diagnose(exc: Exception) -> str:
         return (
             "The serving container could not route to the database host, so no "
             "credential was ever sent. This is egress from the API, not the "
-            "database. gridcast.db.ipv4_first already tries every IPv4 address "
-            "before any IPv6 one; seeing this means the host offered no IPv4 "
-            "address to this network at all."
+            "database. gridcast.db tries every IPv4 address before any IPv6 "
+            "one and reports the first failure, so this is the IPv4 attempt "
+            "talking; the serving logs name every address that was tried."
         )
     if "connection refused" in text:
         return (

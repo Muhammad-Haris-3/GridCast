@@ -6,6 +6,7 @@ be readable as SQL, because the SQL is part of the deliverable.
 
 from __future__ import annotations
 
+import logging
 import socket
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -17,9 +18,11 @@ from psycopg.rows import dict_row
 
 from gridcast.config import get_settings
 
+logger = logging.getLogger(__name__)
 
-def ipv4_first(dsn: str) -> str:
-    """Order the host's addresses so IPv4 is tried before IPv6.
+
+def resolve_attempts(dsn: str) -> list[str]:
+    """Expand a DSN into one DSN per address, IPv4 before IPv6.
 
     Neon publishes both A and AAAA records. psycopg 3.2 resolves the hostname
     itself, turns every address into a separate connection attempt, and tries
@@ -36,26 +39,34 @@ def ipv4_first(dsn: str) -> str:
     The database was fine and the URL was correct. The container simply has no
     IPv6, and free-tier hosting is not going to grow any.
 
-    Resolution stays psycopg's job in spirit: this only reorders what the
-    resolver returned, keeping every address as a fallback rather than pinning
-    one. `host` is repeated alongside `hostaddr` so TLS still carries the
-    hostname — Neon routes on SNI, and an address without a name reaches the
-    proxy and is refused in a way that reads like a credential fault.
+    Every address is kept, as its own attempt, so this reorders and never
+    drops: preferring IPv4 is a guess about the network, and discarding IPv6
+    would make it a decision that strands a host reachable only that way.
+    `host` travels with each address so TLS still carries the hostname — Neon
+    routes on SNI, and an address with no name reaches the proxy and is refused
+    in a way that reads exactly like a credential fault.
+
+    One DSN per address rather than one DSN listing every address, because
+    psycopg's own loop raises the *last* failure. With a host that publishes
+    both families and a network that routes one, the last failure is always the
+    unroutable family, and the attempt that actually mattered is never
+    reported. :func:`connect` walks this list itself so it can say what each
+    one said.
 
     Anything unexpected — no host, a literal address, a caller who already set
-    hostaddr, a resolver failure, a host with only one address family — is left
-    exactly as it came in, so this can only reorder attempts, never remove them.
+    hostaddr, a resolver failure — comes back as a single unchanged attempt, so
+    psycopg keeps full responsibility for the cases this does not understand.
     """
     try:
         params = conninfo_to_dict(dsn)
     except psycopg.ProgrammingError:
-        return dsn
+        return [dsn]
 
     host = params.get("host")
     if not isinstance(host, str) or not host or params.get("hostaddr"):
-        return dsn
+        return [dsn]
     if host.startswith("/") or "," in host:
-        return dsn
+        return [dsn]
 
     port = params.get("port") or 5432
     try:
@@ -64,13 +75,7 @@ def ipv4_first(dsn: str) -> str:
         )
     except (OSError, ValueError):
         # Let psycopg resolve and report the failure in its own words.
-        return dsn
-
-    # Only one family in play: nothing to reorder, so change nothing. An
-    # IPv6-only host must still be tried over IPv6.
-    families = {answer[0] for answer in answers}
-    if socket.AF_INET not in families or socket.AF_INET6 not in families:
-        return dsn
+        return [dsn]
 
     ordered: list[str] = []
     for family in (socket.AF_INET, socket.AF_INET6):
@@ -79,10 +84,49 @@ def ipv4_first(dsn: str) -> str:
             if answer[0] == family and address not in ordered:
                 ordered.append(address)
 
-    params["host"] = ",".join([host] * len(ordered))
-    params["hostaddr"] = ",".join(ordered)
-    params["port"] = str(port)
-    return make_conninfo("", **params)
+    if not ordered:
+        return [dsn]
+
+    return [make_conninfo("", **{**params, "hostaddr": address}) for address in ordered]
+
+
+def _address_of(dsn: str) -> str:
+    """The address an attempt will use, for logging. Never the credential."""
+    try:
+        return str(conninfo_to_dict(dsn).get("hostaddr") or "resolved by psycopg")
+    except psycopg.ProgrammingError:
+        return "unknown"
+
+
+def _open(dsn: str) -> psycopg.Connection:
+    """Open the first address that answers, and account for the ones that did not.
+
+    psycopg tries every address and then raises the last failure. That is the
+    right default and it was actively misleading here: it named an IPv6 address
+    on a container with no IPv6, every time, whatever the IPv4 attempts had to
+    say. A day went into reading that message.
+
+    So each attempt is made here and each failure is kept. The log line carries
+    all of them — Render's logs are private, and the address that failed is the
+    single most useful fact when this happens again. The exception raised is the
+    *first* failure rather than the last, because the list is ordered by which
+    address is most likely to be the real one.
+    """
+    attempts = resolve_attempts(dsn)
+    failures: list[tuple[str, Exception]] = []
+
+    for attempt in attempts:
+        try:
+            return psycopg.connect(attempt, row_factory=dict_row)
+        except psycopg.OperationalError as exc:
+            failures.append((_address_of(attempt), exc))
+
+    logger.error(
+        "all %d connection attempts failed: %s",
+        len(failures),
+        "; ".join(f"{address}: {exc}".replace("\n", " ") for address, exc in failures),
+    )
+    raise failures[0][1]
 
 
 @contextmanager
@@ -95,7 +139,7 @@ def connect(url: str | None = None, *, readonly: bool = False) -> Iterator[psyco
             "No database URL configured. Set GRIDCAST_DATABASE_URL "
             "(and GRIDCAST_READONLY_DATABASE_URL for the API)."
         )
-    with psycopg.connect(ipv4_first(dsn), row_factory=dict_row) as conn:
+    with _open(dsn) as conn:
         if readonly:
             conn.read_only = True
 
