@@ -38,6 +38,18 @@ def test_status_degrades_instead_of_failing() -> None:
         ("could not translate host name to address", "hostname"),
         ("SSL connection has been closed unexpectedly", "sslmode=require"),
         ("something nobody has seen before", "not recognised"),
+        # Managed-Postgres refusals. None of these are the connection's fault,
+        # and none of them contain a word the original classifier looked for —
+        # which is how the status page came to report an unknown cause while
+        # the driver knew exactly what it was.
+        ("ERROR: The endpoint has been disabled. Enable it in the console", "disabled"),
+        ("ERROR: Your project has exceeded the compute time quota", "plan limit"),
+        ("ERROR: Console request failed with status 500", "control-plane"),
+        ('FATAL: role "gridcast_readonly" is not permitted to log in', "LOGIN"),
+        ("FATAL: too many connections for role", "pooler"),
+        ("connection failed: Network is unreachable", "egress"),
+        ("connection to server failed: Connection refused", "refused the port"),
+        ("server closed the connection unexpectedly", "restarted mid-handshake"),
     ],
 )
 def test_connection_failures_are_diagnosed_not_just_named(
@@ -57,6 +69,25 @@ def test_diagnosis_never_echoes_the_driver_message() -> None:
     leaky = "connection to server at 1.2.3.4 failed: password authentication failed"
     diagnosis = _diagnose(RuntimeError(leaky))
     assert "1.2.3.4" not in diagnosis
+
+
+def test_an_unrecognised_cause_still_says_something_usable() -> None:
+    """ "Not recognised" on its own is the failure this page exists to prevent.
+
+    An unknown cause is exactly when the operator most needs the driver's own
+    words — but this endpoint is public, so they arrive with everything that
+    locates the deployment taken out of them.
+    """
+    unknown = (
+        'connection to server at "ep-sweet-unit-pooler.us-east-2.aws.neon.tech" '
+        "(18.226.144.228), port 5432 failed: some brand new thing"
+    )
+    diagnosis = _diagnose(RuntimeError(unknown))
+
+    assert "some brand new thing" in diagnosis
+    assert "18.226.144.228" not in diagnosis
+    assert "neon.tech" not in diagnosis
+    assert "5432" not in diagnosis
 
 
 def test_root_lists_entry_points() -> None:
