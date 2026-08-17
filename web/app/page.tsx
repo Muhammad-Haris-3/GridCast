@@ -82,26 +82,14 @@ export default function Home() {
         horizon group, roughly ten days of live operation.
       </p>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      {/* Styled in globals.css rather than inline: the done/pending tints are
+          different colours in each theme, and an inline literal can only be
+          one of them. */}
+      <div className="rail">
         {MILESTONES.map((m) => (
-          <div
-            key={m.id}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              padding: "11px 15px",
-              borderRadius: 10,
-              whiteSpace: "nowrap",
-              border: `1px solid ${m.done ? "rgba(126,231,135,.28)" : "rgba(242,181,60,.4)"}`,
-              background: m.done ? "rgba(126,231,135,.05)" : "rgba(242,181,60,.06)",
-              color: m.done ? "var(--accent)" : "var(--warn)",
-            }}
-          >
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 500 }}>
-              {m.id}
-            </span>
-            <span style={{ fontSize: 11, color: "var(--dim)" }}>{m.state}</span>
+          <div key={m.id} className={m.done ? "rail-item done" : "rail-item pending"}>
+            <span className="rail-id">{m.id}</span>
+            <span className="rail-state">{m.state}</span>
           </div>
         ))}
       </div>

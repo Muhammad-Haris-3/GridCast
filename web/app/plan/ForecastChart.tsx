@@ -111,10 +111,15 @@ export default function ForecastChart({
         role="img"
         aria-label="Forecast carbon intensity for each half hour, with its 80 percent interval and the recommended window highlighted."
       >
+        {/* No fill or stroke literals below: every colour comes from the themed
+            rules in globals.css, because this chart has to read on a near-black
+            ground and on white. CSS beats a presentation attribute, so a stray
+            hardcoded stroke here would be silently ignored in one theme and
+            wrong in the other. */}
         {gridValues.map((v) => (
           <g key={v}>
-            <line x1={0} y1={y(v)} x2={W} y2={y(v)} stroke="rgba(255,255,255,.07)" strokeWidth={1} />
-            <text x={0} y={y(v) - 6} fill="#565f6c" fontFamily="var(--font-mono)" fontSize={11}>
+            <line className="chart-grid" x1={0} y1={y(v)} x2={W} y2={y(v)} strokeWidth={1} />
+            <text className="chart-axis" x={0} y={y(v) - 6} fontSize={11}>
               {v} g
             </text>
           </g>
@@ -127,19 +132,16 @@ export default function ForecastChart({
             y={0}
             width={Math.max(6, wRight - wx)}
             height={H}
-            fill="rgba(126,231,135,.13)"
-            stroke="rgba(126,231,135,.5)"
             strokeWidth={1}
           />
         ) : null}
 
-        {band ? <path className="chart-band" d={band} fill="rgba(126,231,135,.17)" /> : null}
+        {band ? <path className="chart-band" d={band} /> : null}
 
         <path
           className="chart-line"
           d={line}
           fill="none"
-          stroke="#7ee787"
           strokeWidth={2.2}
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -149,10 +151,9 @@ export default function ForecastChart({
         {tickIndices.map((i) => (
           <text
             key={i}
+            className="chart-axis"
             x={x(i)}
             y={248}
-            fill="#565f6c"
-            fontFamily="var(--font-mono)"
             fontSize={11}
             textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
           >

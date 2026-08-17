@@ -36,16 +36,19 @@ const DIFFICULTY = [
   },
 ];
 
+// Both themes define these. --win is the dark theme's green accent and the light
+// theme's separate green, because light's accent is indigo and an indigo "good"
+// bar next to a red "bad" one reads as a category, not a verdict.
 const TONE_COLOR: Record<string, string> = {
-  win: "var(--accent)",
+  win: "var(--win)",
   loss: "var(--bad)",
   ref: "var(--muted)",
 };
 
 const BAR_COLOR: Record<string, string> = {
-  win: "var(--accent)",
-  loss: "rgba(255,107,107,.7)",
-  ref: "rgba(255,255,255,.28)",
+  win: "var(--win)",
+  loss: "var(--bar-loss)",
+  ref: "var(--bar-ref)",
 };
 
 export default function AboutPage() {
@@ -140,7 +143,7 @@ export default function AboutPage() {
                 minWidth: 120,
                 height: 10,
                 borderRadius: 2,
-                background: "rgba(255,255,255,.05)",
+                background: "var(--track)",
                 overflow: "hidden",
               }}
             >
@@ -159,7 +162,7 @@ export default function AboutPage() {
                 textAlign: "right",
                 fontFamily: "var(--font-mono)",
                 fontSize: 15,
-                color: f.tone === "win" ? "var(--accent)" : "var(--text)",
+                color: f.tone === "win" ? "var(--win)" : "var(--text)",
               }}
             >
               {f.value.toFixed(1)}
@@ -238,7 +241,7 @@ export default function AboutPage() {
               flexWrap: "wrap",
               padding: "16px 22px",
               borderBottom: "1px solid var(--rule)",
-              background: "rgba(255,255,255,.018)",
+              background: "var(--row-tint)",
             }}
           >
             <div

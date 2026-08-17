@@ -158,12 +158,17 @@ export default function Scoreboard({
                       const r = rows.find((z) => z.model_version === m && z.horizon_group === g);
                       const value = r && r.publishable && r.mase != null ? r.mase : null;
                       const v = verdictOf(value);
+                      // The alpha is computed from how far MASE sits from 1.0, so
+                      // this cannot be a plain class. The hue comes from a theme
+                      // token holding bare rgb channels — the two themes disagree
+                      // about the green, and light needs weaker alphas to stay
+                      // readable on white, hence --tint-scale.
                       const tint =
                         value == null || v.cls === "ref"
-                          ? "rgba(255,255,255,.03)"
+                          ? "var(--cell-flat)"
                           : value < 1
-                            ? `rgba(126,231,135,${(0.06 + (1 - value) * 0.3).toFixed(3)})`
-                            : `rgba(255,107,107,${Math.min(0.34, 0.08 + (value - 1) * 0.28).toFixed(3)})`;
+                            ? `rgba(var(--win-rgb), calc(${(0.06 + (1 - value) * 0.3).toFixed(3)} * var(--tint-scale)))`
+                            : `rgba(var(--bad-rgb), calc(${Math.min(0.34, 0.08 + (value - 1) * 0.28).toFixed(3)} * var(--tint-scale)))`;
                       return (
                         <td key={g} className={`num ${v.cls}`} style={{ background: tint }}>
                           {value == null ? "—" : value.toFixed(2)}
