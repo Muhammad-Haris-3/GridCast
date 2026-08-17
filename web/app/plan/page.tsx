@@ -1,4 +1,6 @@
-import { getPlan, unavailableReason } from "@/lib/api";
+import { getPlan, unavailableReason, type PlanResult } from "@/lib/api";
+import { loadMatching } from "@/lib/snapshot";
+import DataAge from "../DataAge";
 import PlanControls from "./PlanControls";
 import ForecastChart from "./ForecastChart";
 
@@ -31,9 +33,20 @@ export default async function PlanPage({
   const within = Number(params.within ?? 24);
   const kwh = Number(params.kwh ?? 1.4);
 
-  const plan = await getPlan(duration, within, kwh);
+  // Only the default combination is published as a snapshot, so this serves
+  // the untouched page — which is what nearly every visitor loads — without a
+  // database read, and falls through to the live planner the moment a control
+  // is moved. The parameter names must match PLAN_DEFAULTS in
+  // gridcast/snapshot.py; a mismatch declines the snapshot rather than
+  // answering a four-hour question with the two-hour answer.
+  const loaded = await loadMatching<PlanResult>(
+    "plan",
+    { duration_hours: duration, within_hours: within, appliance_kwh: kwh },
+    () => getPlan(duration, within, kwh)
+  );
+  const plan = loaded?.data;
 
-  if (!plan || plan.detail || !plan.best_window) {
+  if (!plan || !loaded || plan.detail || !plan.best_window) {
     // Ask the status endpoint why, rather than guessing. It answers even when
     // the database does not, and it names the actual cause.
     const reason = plan?.detail ?? (await unavailableReason());
@@ -74,7 +87,11 @@ export default async function PlanPage({
 
       <PlanControls duration={duration} within={within} kwh={kwh} />
 
-      <div className="card accent" style={{ marginTop: 24, padding: "30px 32px" }}>
+      <div style={{ marginTop: 24 }}>
+        <DataAge loaded={loaded} />
+      </div>
+
+      <div className="card accent" style={{ padding: "30px 32px" }}>
         <div
           style={{
             display: "flex",

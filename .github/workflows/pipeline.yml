@@ -24,6 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Write access is for the snapshots branch and nothing else. The register
+    # lives in Postgres and is never written from here.
+    permissions:
+      contents: write
+
     env:
       GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
 
@@ -74,6 +79,51 @@ jobs:
         run: python -m gridcast.score
         env:
           GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+      # Everything below publishes the static surface the frontend actually
+      # reads. It runs even when the steps above failed, because a failed run
+      # is exactly when the status payload — which carries the diagnosis — is
+      # worth republishing.
+      #
+      # Start from what is already on the branch. The publish is a force-push
+      # of a single orphan commit, so anything absent from this directory is
+      # deleted from the branch; without the clone, a payload that failed to
+      # build would be removed rather than left at its previous value, which is
+      # the opposite of what gridcast/snapshot.py is careful to do.
+      - name: Fetch the published snapshots
+        if: always()
+        env:
+          REPO: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          if ! git clone --quiet --depth 1 --branch snapshots "$REPO" snapshots; then
+            echo "no snapshots branch yet — this run creates it"
+            mkdir -p snapshots
+            git -C snapshots init --quiet
+          fi
+
+      - name: Build snapshots
+        if: always()
+        run: python -m gridcast.snapshot --out snapshots
+
+      # An orphan commit every time, force-pushed. The branch is a cache: it
+      # carries no history worth keeping, and accumulating 48 commits a day of
+      # derived JSON would grow the repository without ever being read. Keeping
+      # it to one commit also makes it unmistakable that this is not the record
+      # — the register is in Postgres and the seals are on main.
+      - name: Publish snapshots
+        if: always()
+        env:
+          REPO: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          cd snapshots
+          rm -rf .git
+          git init --quiet
+          git checkout --quiet -b snapshots
+          git add -A
+          git -c user.name="gridcast-pipeline" \
+              -c user.email="gridcast-pipeline@users.noreply.github.com" \
+              commit --quiet -m "snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA:0:12}"
+          git push --quiet --force "$REPO" snapshots
 
       - name: Surface the failure
         if: failure()

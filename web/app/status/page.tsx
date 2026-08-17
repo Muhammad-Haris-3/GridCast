@@ -1,4 +1,6 @@
-import { getStatus, API_BASE } from "@/lib/api";
+import { getStatus, API_BASE, type SystemStatus } from "@/lib/api";
+import { load } from "@/lib/snapshot";
+import DataAge from "../DataAge";
 
 // Rendered once a minute and shared, rather than once per visitor.
 export const revalidate = 60;
@@ -15,9 +17,15 @@ function statusClass(status: string): string {
 }
 
 export default async function StatusPage() {
-  const status = await getStatus();
+  // The snapshot carries the status payload as the pipeline saw it, including
+  // the diagnosis when the database was unreachable — which is the version
+  // worth reading during an outage. The live call is still the escalation,
+  // because once the snapshot stops being published the pipeline is the thing
+  // that has failed and only the API can report on itself.
+  const loaded = await load<SystemStatus>("status", getStatus);
+  const status = loaded?.data;
 
-  if (!status) {
+  if (!status || !loaded) {
     return (
       <>
         <span className="kicker">Operations</span>
@@ -43,6 +51,8 @@ export default async function StatusPage() {
       <p className="lede">
         Live health of the ingestion, warehouse and serving layers. {status.milestone}.
       </p>
+
+      <DataAge loaded={loaded} />
 
       <div className="grid">
         <section className="card">

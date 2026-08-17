@@ -1,4 +1,6 @@
 import { API_BASE, unavailableReason } from "@/lib/api";
+import { load } from "@/lib/snapshot";
+import DataAge from "../DataAge";
 import Scoreboard, { type AccuracyRow } from "./Scoreboard";
 
 // Accuracy changes only as forecasts mature and are scored, hours behind the
@@ -39,12 +41,18 @@ async function get<T>(path: string): Promise<T | null> {
 }
 
 export default async function AccuracyPage() {
-  const [accuracy, integrity] = await Promise.all([
-    get<Accuracy>("/v1/accuracy"),
-    get<Integrity>("/v1/integrity"),
+  // Snapshot first, the API only if the snapshot has stopped being published.
+  // Both payloads are computed in the same pipeline run, so in the ordinary
+  // case this page costs two CDN reads and no database at all.
+  const [accuracyLoad, integrityLoad] = await Promise.all([
+    load<Accuracy>("accuracy", () => get<Accuracy>("/v1/accuracy")),
+    load<Integrity>("integrity", () => get<Integrity>("/v1/integrity")),
   ]);
 
-  if (!accuracy || !integrity) {
+  const accuracy = accuracyLoad?.data;
+  const integrity = integrityLoad?.data;
+
+  if (!accuracy || !integrity || !accuracyLoad || !integrityLoad) {
     // The status endpoint answers even when the database does not, so the reason
     // can be the real one rather than an assumption about sleep.
     const reason = await unavailableReason();
@@ -68,6 +76,11 @@ export default async function AccuracyPage() {
   const leader = accuracy.rows.reduce((max, r) => Math.max(max, r.n), 0);
   const pct = Math.min(100, (leader / accuracy.min_publishable_n) * 100);
 
+  // The page is only as current as its stalest half. Reporting the fresher of
+  // the two would let a live integrity read vouch for a day-old scoreboard.
+  const provenance =
+    accuracyLoad.ageSeconds >= integrityLoad.ageSeconds ? accuracyLoad : integrityLoad;
+
   return (
     <>
       <span className="kicker">Scoreboard</span>
@@ -77,6 +90,8 @@ export default async function AccuracyPage() {
         <strong>before its outcome existed</strong>, then scored automatically once the actual
         arrived. Nothing on this page is a backtest.
       </p>
+
+      <DataAge loaded={provenance} />
 
       <div className="cells">
         <div>

@@ -42,6 +42,12 @@ data/
 .DS_Store
 Thumbs.db
 
+# The static serving cache, rebuilt every pipeline run and published to the
+# `snapshots` branch. Ignored on main on purpose: it is derived from the
+# register, it changes 48 times a day, and committing it here would bury the
+# project's history under its own output. See gridcast/snapshot.py.
+snapshots/
+
 # NOT ignored, deliberately:
 #   models/      — model artefacts are versioned with the code that made them
 #   seals/       — integrity seals must be externally verifiable from git history
