@@ -217,7 +217,7 @@ def status() -> dict[str, Any]:
         # A literal, and it goes stale silently: the status page prints it
         # verbatim, so it said "M5" for three milestones after M5 shipped.
         # Move it with the milestone table in README.md.
-        "milestone": "M8 — product and communication",
+        "milestone": "M9 — operational resilience",
         "serving_host": settings.serving_host,
         "database": "unreachable",
         "readonly_role_in_use": settings.readonly_role_in_use,

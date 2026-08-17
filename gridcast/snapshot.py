@@ -1,4 +1,4 @@
-"""Publish the serving payloads as static JSON (M9).
+"""Publish the serving payloads as static JSON (M9, NFR-13).
 
     python -m gridcast.snapshot                  # write to snapshots/
     python -m gridcast.snapshot --out some/dir

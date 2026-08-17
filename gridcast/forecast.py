@@ -43,7 +43,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from gridcast.baselines import PERIOD, PERIODS_PER_DAY, Observed
+from gridcast.baselines import (
+    PERIOD,
+    PERIODS_PER_DAY,
+    SEASONAL_WALKBACK_STEPS,
+    Observed,
+)
+from gridcast.calibrate import STALE_AFTER, load_calibration
 from gridcast.config import get_settings
 from gridcast.db import connect
 from gridcast.runlog import RunContext
@@ -154,6 +160,23 @@ def load_eso_forecast(anchor: datetime) -> dict[datetime, float]:
 # Set to None to restore the full archive.
 ERROR_HISTORY_DAYS: int | None = 365
 
+# How much observed history an ISSUING run loads.
+#
+# Distinct from ERROR_HISTORY_DAYS, which is a modelling window and stays a
+# year. This one is a reach: the seasonal naive steps back at most
+# SEASONAL_WALKBACK_STEPS whole days before returning NaN, so nothing older can
+# affect a forecast. Loading a year to consult a fortnight of it is what made
+# issuing the most expensive recurring read in the project — 17,520 rows every
+# thirty minutes, on a plan metered in bytes read.
+#
+# The calibration that genuinely needs the year is computed once a day by
+# gridcast.calibrate and read back as sixteen rows.
+#
+# Derived with a week of slack, so a gap has to swallow the entire walk-back
+# plus seven days before this changes an answer the unbounded read would have
+# given.
+ISSUING_HISTORY_DAYS = SEASONAL_WALKBACK_STEPS + 7
+
 
 def load_actuals(since: datetime | None = None) -> pd.Series:
     """The observed series. Matured periods only.
@@ -184,6 +207,18 @@ def load_actuals(since: datetime | None = None) -> pd.Series:
     return pd.Series(frame["actual_gco2_kwh"].astype(float).to_numpy(), index=index)
 
 
+def error_band_lag(high: int) -> int:
+    """Periods a band must step back when forecasting.
+
+    Horizon 96 needs the value from two days prior, horizon 6 only one. Shared
+    with the calibration job so the sample count it records is the count this
+    function actually used — the same expression written twice is the usual way
+    a stored `n` stops describing the estimate beside it.
+    """
+    days_back = max(1, int(np.ceil(high / PERIODS_PER_DAY)))
+    return days_back * PERIODS_PER_DAY
+
+
 def empirical_error_quantiles(actual: pd.Series) -> dict[tuple[int, int], dict[str, float]]:
     """The model's own historical error distribution, per horizon band.
 
@@ -191,6 +226,11 @@ def empirical_error_quantiles(actual: pd.Series) -> dict[tuple[int, int], dict[s
     spread of (actual - same period one day earlier). Long horizons must step
     back further than one day, so their errors are wider — which the bands
     capture without needing 96 separate estimates.
+
+    Reading a year of actuals to produce sixteen numbers is expensive enough
+    that issuing no longer does it; gridcast.calibrate runs this daily and
+    stores the result. This remains the only implementation, and the stored
+    values are exactly its output.
     """
     if len(actual) <= PERIODS_PER_DAY * 8:
         return {}
@@ -199,10 +239,7 @@ def empirical_error_quantiles(actual: pd.Series) -> dict[tuple[int, int], dict[s
     quantiles: dict[tuple[int, int], dict[str, float]] = {}
 
     for low, high in ERROR_BANDS:
-        # Days back this band must reach when forecasting: horizon 96 needs the
-        # value from two days prior, horizon 6 only one.
-        days_back = max(1, int(np.ceil(high / PERIODS_PER_DAY)))
-        lag = days_back * PERIODS_PER_DAY
+        lag = error_band_lag(high)
         errors = values[lag:] - values[:-lag]
         quantiles[(low, high)] = {
             name: float(np.quantile(errors, level)) for name, level in QUANTILE_LEVELS.items()
@@ -309,6 +346,7 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
     """
     from gridcast.features import (
         SERVING_HISTORY_DAYS,
+        WEATHER_TRAILING_DAYS,
         build_features,
         load_intensity_history,
         load_mix_history,
@@ -322,7 +360,16 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
 
     intensity = load_intensity_history(since)
     mix = load_mix_history(since)
-    weather = load_weather_history(since)
+
+    # Weather on its own, narrower window. build_features reads it at the
+    # targets and across the 48 periods before the anchor, and nowhere between
+    # — so the rows in between were being fetched only to be dropped by the
+    # reindex. Bounded forward at the furthest target for the same reason:
+    # a vintage row beyond it cannot reach any feature.
+    weather = load_weather_history(
+        anchor - timedelta(days=WEATHER_TRAILING_DAYS),
+        until=max(targets),
+    )
 
     frame = build_features(
         run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
@@ -463,15 +510,44 @@ def main() -> int:
     settings = get_settings()
     print(f"database: {settings.database_url.split('@')[-1].split('?')[0] or 'NOT CONFIGURED'}")
 
-    actual = load_actuals(
-        datetime.now(UTC) - timedelta(days=ERROR_HISTORY_DAYS) if ERROR_HISTORY_DAYS else None
-    )
+    actual = load_actuals(datetime.now(UTC) - timedelta(days=ISSUING_HISTORY_DAYS))
     if actual.empty:
         print("no matured actuals available; nothing to forecast from")
         return 1
 
     observed = Observed(actual=actual)
-    error_quantiles = empirical_error_quantiles(actual)
+
+    # The intervals come from the stored calibration, not from this run.
+    #
+    # The fallback computes it here, which is expensive and correct — a first
+    # run against a fresh database has nothing stored, and issuing point
+    # forecasts with no intervals rather than reading a year once would be
+    # choosing the wrong thing to protect.
+    error_quantiles, computed_at = load_calibration()
+    if error_quantiles:
+        age = datetime.now(UTC) - computed_at
+        if age > STALE_AFTER:
+            print(
+                f"::warning title=Calibration::Intervals are calibrated from "
+                f"{computed_at:%Y-%m-%d %H:%M}Z, {age.days} days old. The daily "
+                "calibration job has not run. Forecasts are still issued — a "
+                "calibration fitted on a year is not wrong after a few days — "
+                "but it is no longer current."
+            )
+        else:
+            hours = age.total_seconds() / 3600
+            print(f"calibration from {computed_at:%Y-%m-%d %H:%M}Z ({hours:.1f} h old)")
+    else:
+        print("no stored calibration; computing once from history")
+        history = load_actuals(
+            datetime.now(UTC) - timedelta(days=ERROR_HISTORY_DAYS) if ERROR_HISTORY_DAYS else None
+        )
+        error_quantiles = empirical_error_quantiles(history)
+        if not error_quantiles:
+            print(
+                "::warning title=Calibration::Not enough history to calibrate "
+                "intervals. Point forecasts will be issued without them."
+            )
 
     # The issue time is the true instant of computation, never rounded.
     #

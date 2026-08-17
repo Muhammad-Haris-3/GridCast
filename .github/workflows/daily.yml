@@ -82,6 +82,20 @@ jobs:
           PGDATABASE: ${{ secrets.PGDATABASE }}
           PGSSLMODE: require
 
+      # Recalibrate the published intervals, once a day, from a year of matured
+      # actuals.
+      #
+      # Issuing used to do this every thirty minutes, which meant reading 17,520
+      # rows to arrive at sixteen numbers that had not moved. The window is a
+      # modelling choice and is unchanged; only the frequency was wrong. Runs
+      # after the warehouse rebuild so it calibrates on fresh marts.
+      #
+      # Allowed to fail the workflow. A calibration that cannot be computed is
+      # worth a red run — issuing degrades to the previous set and says how old
+      # it is, so the site stays up while this gets looked at.
+      - name: Recalibrate intervals
+        run: python -m gridcast.calibrate
+
       # Only runs if the build above succeeded. `if: always()` here would prune
       # on the strength of marts that failed to refresh.
       - name: Prune landing tables

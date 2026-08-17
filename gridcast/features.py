@@ -59,11 +59,28 @@ FEATURE_REACH_HOURS = max(*INTENSITY_LAG_HOURS, *ROLLING_WINDOWS_HOURS)
 # allowance in under a week and took the whole site down with it, which is a
 # lot of damage for rows nothing was going to look at.
 #
-# 30 days rather than 7: the lag takes the last row at or before its stamp, so
-# a gap wider than the window would leave the feature NaN where the unbounded
-# read found a real value. Four times the reach absorbs any outage worth
-# forecasting through, and still loads a small fraction of the archive.
-SERVING_HISTORY_DAYS = 30
+# More than the reach, not equal to it: the lag takes the last row at or before
+# its stamp, so a gap spanning the boundary would leave the feature NaN where an
+# unbounded read found a real value. A week of slack past the reach absorbs any
+# outage worth forecasting through.
+#
+# Derived rather than typed, so a new lag cannot silently outrun the window that
+# serving loads — the failure it would cause is a NaN feature at issue time,
+# which the model would consume without complaint.
+SERVING_HISTORY_DAYS = -(-FEATURE_REACH_HOURS // 24) + 7
+
+# Weather is loaded on a different window because it is used differently.
+#
+# build_features consults weather at exactly two places: the TARGET periods,
+# via reindex, and the 48 periods at or before the issue time, for the wind
+# ramp. Rows between those two spans are fetched, parsed, and then dropped by
+# the reindex — provably dead, not merely unlikely to matter. Loading three
+# days of trailing weather instead of thirty removes them and changes no
+# feature.
+#
+# Three rather than one: the ramp takes the last 48 rows at or before the
+# anchor, and under a gap that span reaches back further than 24 hours.
+WEATHER_TRAILING_DAYS = 3
 
 
 # The publication lag assumed for backfilled rows. PROVISIONAL.
@@ -149,12 +166,18 @@ def load_mix_history(since: datetime | None = None) -> pd.DataFrame:
     return frame.set_index("sp_start_utc")
 
 
-def load_weather_history(since: datetime | None = None) -> pd.DataFrame:
+def load_weather_history(
+    since: datetime | None = None, until: datetime | None = None
+) -> pd.DataFrame:
     """Weather from the FORECAST VINTAGE, pivoted wide by location.
 
     Drawn from `fct_weather_period`, which reads the materialised
     `fct_weather_hour` table — typed weather extracted from `lnd_om_vintage`.
     Never the archive.
+
+    `until` bounds the read forward for issuing runs, which need weather only
+    as far as their furthest target. Training passes neither bound and reads
+    everything, as it must.
     """
     settings = get_settings()
     locations = tuple(FEATURE_LOCATIONS)
@@ -166,9 +189,10 @@ def load_weather_history(since: datetime | None = None) -> pd.DataFrame:
               FROM marts.fct_weather_period
              WHERE location_id = ANY(%s)
                AND (%s::timestamptz IS NULL OR sp_start_utc >= %s)
+               AND (%s::timestamptz IS NULL OR sp_start_utc <= %s)
              ORDER BY sp_start_utc
             """,
-            (list(locations), since, since),
+            (list(locations), since, since, until, until),
         )
         rows = cur.fetchall()
 

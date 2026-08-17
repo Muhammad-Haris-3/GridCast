@@ -92,10 +92,23 @@ rather than showing a broken screen.
 
 ## Status
 
-**M8 complete — the live loop, the planner, and the write-ups are deployed.**
+**M9 complete — the site no longer depends on the database being reachable.**
 M7 is the one milestone still open, and it is waiting on data rather than on
 code: the pre-registered promotion rule cannot be evaluated until enough
 forecasts have been scored.
+
+M9 was not planned. On 2026-08-17 the database's free-tier **data transfer**
+allowance ran out and everything stopped at once — the API returned 500s, the
+pages went blank, and the pipeline could not read either, so the register
+stopped growing. Page views were part of what spent it: every visit asked
+Postgres a question that the last pipeline run had already answered.
+
+Serving now reads static snapshots published by the pipeline, so traffic costs
+no database transfer and the site keeps answering with the last good figures,
+labelled with their age, while the database is unreachable. Issuing reads what
+it consults and no more: the interval calibration that needed a year of history
+is computed once a day rather than 48 times, which is the change that mattered
+most. See NFR-13 in the SRS for the requirement this should have started with.
 
 | Milestone | State |
 |---|---|
@@ -108,6 +121,7 @@ forecasts have been scored.
 | M6 Modelling depth | ✅ Complete |
 | M7 Champion/challenger & monitoring | Waiting on data — the pre-registered rule needs ~1,440 scored points per horizon group, about 10 days of live operation |
 | M8 Product & communication | ✅ Planner, decision memo, methods |
+| M9 Operational resilience | ✅ Site serves from published snapshots; issuing reads bounded by what it consults |
 
 Four models issue forecasts every run — a seasonal-naive champion, a persistence
 baseline, a gradient-boosting challenger, and National Grid ESO's own forecast

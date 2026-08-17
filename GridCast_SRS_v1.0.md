@@ -369,6 +369,25 @@ Anticipated here, confirmed or refuted in M2:
 | NFR-10 | Accessibility | WCAG 2.1 AA for the public application; charts readable without relying on colour alone |
 | NFR-11 | Security | No secrets in the repository; API keys for third-party services (if ever introduced) held in platform secret stores; read-only database role for the serving API |
 | NFR-12 | Rate limiting | Public JSON API rate-limited per IP to protect free-tier quotas |
+| NFR-13 | Data transfer budget | Serving reads cost no database transfer; a scheduled run reads only what its outputs depend on. Visitor traffic must not be able to exhaust the allowance |
+
+### 8.0 Why NFR-13 exists
+
+Added after the fact, which is the honest place to record it: on 2026-08-17 the
+Neon project's data-transfer allowance was exhausted and the whole system
+stopped. Not degraded — stopped. The API returned 500s, the pages went blank,
+and the pipeline could not read either, so the register stopped growing and the
+milestone waiting on live data (M7) stopped being a matter of waiting.
+
+NFR-7 already bounded *storage*, and storage was never the problem. Nothing
+bounded **bytes read**, and three things were spending them without anything
+watching: every page view queried Postgres for an answer that had been decided
+by the last pipeline run; every issuing run read a year of actuals to recompute
+sixteen calibration numbers that had not moved; and the feature loads fetched
+thirty days of weather to consult two of them.
+
+The general lesson is the requirement: on a metered plan, *reading* is a cost,
+and a system with no budget for it will find the limit by hitting it.
 
 ### 8.1 How NFR-3 and NFR-8 are satisfied together
 
@@ -493,6 +512,7 @@ the outcome is not a rule.
 | **M6** | Modelling depth | SARIMAX and gradient-boosting models with quantile intervals; coverage validated; error segmentation complete |
 | **M7** | Champion/challenger & monitoring | Live challenger running under the pre-registered rule; drift detection and alert feed in production |
 | **M8** | Product & communication | Full application — planner, accuracy page, alerts, documented API — plus decision memo, methods document, and published negative results |
+| **M9** | Operational resilience *(added after the 2026-08-17 outage)* | Serving reads cost no database transfer; the site renders from published snapshots and states their age; a scheduled run reads only what its outputs depend on; interval calibration computed on a schedule rather than per issue. NFR-13 satisfied and measured |
 
 M5 is the point at which the project is defensible even if later milestones
 slip: a deployed service issuing forecasts and grading itself in public is
@@ -510,10 +530,11 @@ already the project's central claim.
 | R-4 | **The model loses to the ESO forecast** | Reframed as an outcome, not a failure: the deliverable is the scoreboard. FR-32 requires losses published above successes. A win claimed without this framing would be the actual failure |
 | R-5 | Scheduler unreliability produces gaps | FR-4 gap-filling; ≥99% coverage target (NFR-1) rather than a punctuality target |
 | R-6 | Regional intensity presented as validated when it cannot be | NFR-9; regional surfaces carry a permanent unvalidated label |
-| R-7 | Free-tier limits breached as history accumulates | Retention policy in M3; storage tracked as an operational metric |
-| R-8 | **Scope exceeds available time** | M5 defined as a defensible stopping point; M6–M8 additive. No milestone depends on a later one |
+| R-7 | Free-tier **storage** limit breached as history accumulates | Retention policy in M3; storage tracked as an operational metric |
+| R-8 | **Scope exceeds available time** | M5 defined as a defensible stopping point; M6–M9 additive. No milestone depends on a later one |
 | R-9 | Data volume overstated in communication | The dataset is ~140k national periods plus derived rows — low millions. Documentation states this plainly; no "big data" claim is made anywhere |
 | R-10 | Multiple-comparison abuse across 96 horizons | Benjamini–Hochberg correction; horizon groups fixed in the pre-registration |
+| R-11 | Free-tier **transfer** allowance exhausted, stopping ingestion and serving together | **Realised on 2026-08-17.** NFR-13 and M9: serving reads static snapshots rather than the database, so traffic cannot spend the allowance; scheduled runs read only what their outputs depend on. The shared failure mode is the danger — one allowance feeds both the pipeline and the site, so exhausting it stops the project recording evidence, not merely displaying it |
 
 ---
 

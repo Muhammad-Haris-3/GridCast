@@ -52,6 +52,15 @@ def assert_knowable(
     return frame
 
 
+# How many whole seasons the seasonal naive may step back before giving up.
+#
+# Named because it also bounds how much history an issuing run has to load:
+# nothing beyond it can be reached, so loading further back is loading rows the
+# baseline cannot consult. gridcast.forecast derives its issuing window from
+# this, which is what stops the two drifting apart.
+SEASONAL_WALKBACK_STEPS = 14
+
+
 @dataclass(frozen=True)
 class Observed:
     """The actual series, indexed by settlement period start.
@@ -87,7 +96,7 @@ class Observed:
 
         # Walk further back if the landed period is missing or still pending;
         # 14 attempts is two weeks of daily steps, well past any observed gap.
-        for _ in range(14):
+        for _ in range(SEASONAL_WALKBACK_STEPS):
             if candidate in self.actual.index:
                 value = self.actual.loc[candidate]
                 if pd.notna(value):
