@@ -1,0 +1,144 @@
+name: Apply schema
+
+# Manual only. Never on a schedule and never on push.
+#
+# Every file in sql/ is idempotent, so this is safe to run twice — but schema
+# changes are the one thing in this project that a cron should not decide the
+# timing of. A migration that lands automatically lands unattended, and the
+# operator finds out from the consequences.
+#
+# It exists because the production URL is a GitHub secret. That is the right
+# place for it: nobody has to paste a live credential into a shell to apply a
+# migration, and the run leaves an audit trail of who applied what and when.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "apply" to confirm this runs against production'
+        required: true
+        default: ""
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply sql/ to production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
+
+    steps:
+      # A dispatch button is one misclick from a production schema change, and
+      # the confirmation is the only thing between the two. Checked before
+      # checkout so a wrong answer costs nothing.
+      - name: Check the confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "apply" ]; then
+            echo "::error title=Not confirmed::Type 'apply' to run this. Nothing was changed."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      # The serving requirements are enough: migrate needs psycopg and config,
+      # not pandas or a modelling stack.
+      - name: Install
+        run: pip install -r requirements-serve.txt
+
+      # Reachability first, and separately, because the two failures need
+      # completely different responses and the migration output conflates them.
+      # While the transfer allowance is spent Neon refuses the connection
+      # outright, so "the migration failed" would read as a broken migration
+      # when nothing was ever attempted.
+      - name: Check the database answers
+        run: |
+          python - <<'PY'
+          from gridcast.db import connect
+          from gridcast.config import get_settings
+
+          print(f"host: {get_settings().serving_host}")
+          try:
+              with connect() as conn, conn.cursor() as cur:
+                  cur.execute("SELECT current_user AS role, version() AS version")
+                  row = cur.fetchone()
+              print(f"connected as {row['role']}")
+              print(row["version"].split(" on ")[0])
+          except Exception as exc:
+              from api.routers.status import _diagnose
+              print(f"::error title=Unreachable::{_diagnose(exc)}")
+              raise SystemExit(1)
+          PY
+
+      # What is there now, so the diff below is readable rather than asserted.
+      - name: Tables before
+        run: |
+          python - <<'PY'
+          from gridcast.db import fetch_all
+          rows = fetch_all(
+              "SELECT table_schema || '.' || table_name AS name"
+              "  FROM information_schema.tables"
+              " WHERE table_schema IN ('landing','staging','marts','register')"
+              "   AND table_type = 'BASE TABLE' ORDER BY 1"
+          )
+          print(f"{len(rows)} tables")
+          for row in rows:
+              print(f"  {row['name']}")
+          PY
+
+      - name: Apply schema
+        run: python -m gridcast.migrate
+
+      - name: Tables after
+        if: always()
+        run: |
+          python - <<'PY'
+          from gridcast.db import fetch_all
+          rows = fetch_all(
+              "SELECT table_schema || '.' || table_name AS name"
+              "  FROM information_schema.tables"
+              " WHERE table_schema IN ('landing','staging','marts','register')"
+              "   AND table_type = 'BASE TABLE' ORDER BY 1"
+          )
+          print(f"{len(rows)} tables")
+          for row in rows:
+              print(f"  {row['name']}")
+          PY
+
+      # The two tables this was written to deliver. Named explicitly so a run
+      # that reports success while leaving them absent cannot be mistaken for
+      # one that worked.
+      - name: Confirm the new tables exist
+        run: |
+          python - <<'PY'
+          from gridcast.db import fetch_one
+
+          EXPECTED = ("register.reg_error_quantile", "landing.db_transfer")
+          missing = []
+          for name in EXPECTED:
+              schema, table = name.split(".")
+              row = fetch_one(
+                  "SELECT to_regclass(%s) IS NOT NULL AS present", (f"{schema}.{table}",)
+              )
+              present = bool(row and row["present"])
+              print(f"  {name:<34} {'present' if present else 'MISSING'}")
+              if not present:
+                  missing.append(name)
+
+          if missing:
+              print(f"::error title=Schema incomplete::{', '.join(missing)} not created")
+              raise SystemExit(1)
+          PY
+
+      - name: Surface the failure
+        if: failure()
+        run: |
+          echo "::error title=migrate::The schema was not fully applied. Every file in sql/ is idempotent, so re-running is safe once the cause is fixed."
