@@ -83,27 +83,6 @@ jobs:
           PGSSLMODE: require
 
       # Recalibrate the published intervals, once a day, from a year of matured
-      # actuals.
-      #
-      # Issuing used to do this every thirty minutes, which meant reading 17,520
-      # rows to arrive at sixteen numbers that had not moved. The window is a
-      # modelling choice and is unchanged; only the frequency was wrong. Runs
-      # after the warehouse rebuild so it calibrates on fresh marts.
-      #
-      # Allowed to fail the workflow. A calibration that cannot be computed is
-      # worth a red run — issuing degrades to the previous set and says how old
-      # it is, so the site stays up while this gets looked at.
-      - name: Recalibrate intervals
-        run: python -m gridcast.calibrate
-
-      # The transfer allowance, once a day, with the period still open enough
-      # to act on. Non-fatal: --report annotates and returns zero, because a
-      # budget that fails the workflow would stop the ingestion that is the
-      # point of the workflow — the opposite of what running out costs.
-      - name: Report database transfer
-        if: always()
-        run: python -m gridcast.usage --report
-
       # Only runs if the build above succeeded. `if: always()` here would prune
       # on the strength of marts that failed to refresh.
       - name: Prune landing tables
@@ -135,3 +114,32 @@ jobs:
           else
             echo "no new seals to commit"
           fi
+
+      # Recalibrate the published intervals from a year of matured actuals.
+      #
+      # Issuing used to do this every thirty minutes, which meant reading 17,520
+      # rows to arrive at sixteen numbers that had not moved. The window is a
+      # modelling choice and is unchanged; only the frequency was wrong.
+      #
+      # LAST, and after the seal, on purpose. A failing step blocks the steps
+      # below it, and this one fails until sql/007 has been applied by hand —
+      # placed any earlier it would take pruning and sealing down with it, which
+      # are the two things in this workflow that must not be skipped. Pruning
+      # holds the storage ceiling; the seal is the integrity evidence.
+      #
+      # `if: always()` so it still runs when something upstream failed. It reads
+      # matured actuals, which do not depend on today's ingestion succeeding.
+      #
+      # Allowed to fail the workflow. Issuing keeps the previous calibration and
+      # reports its age, so the site stays up while this gets looked at.
+      - name: Recalibrate intervals
+        if: always()
+        run: python -m gridcast.calibrate
+
+      # The transfer allowance, once a day, while the period is still open
+      # enough to act on. Non-fatal: --report annotates and returns zero,
+      # because a budget check that failed the workflow would stop the
+      # ingestion that is the point of the workflow.
+      - name: Report database transfer
+        if: always()
+        run: python -m gridcast.usage --report
