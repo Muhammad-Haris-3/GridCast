@@ -110,6 +110,18 @@ it consults and no more: the interval calibration that needed a year of history
 is computed once a day rather than 48 times, which is the change that mattered
 most. See NFR-13 in the SRS for the requirement this should have started with.
 
+There is also now a counter. Every read is measured and attributed to the job
+that made it, and the period total is published on the
+[status page](https://grid-cast-sigma.vercel.app/status) beside everything
+else — the allowance is what stopped the register growing, so how close it is
+to running out is part of knowing whether the evidence is still accumulating.
+Past 90% the daily calibration stands down; issuing and scoring never do,
+because a forecast not written is evidence permanently missing.
+
+The figure is an estimate, measured from returned value widths rather than the
+wire, and it says so wherever it appears. It exists to make a tenfold
+regression obvious on the day it lands, not to say how much allowance is left.
+
 | Milestone | State |
 |---|---|
 | M0 Foundation & walking skeleton | ✅ Complete — deployed |

@@ -96,6 +96,14 @@ jobs:
       - name: Recalibrate intervals
         run: python -m gridcast.calibrate
 
+      # The transfer allowance, once a day, with the period still open enough
+      # to act on. Non-fatal: --report annotates and returns zero, because a
+      # budget that fails the workflow would stop the ingestion that is the
+      # point of the workflow — the opposite of what running out costs.
+      - name: Report database transfer
+        if: always()
+        run: python -m gridcast.usage --report
+
       # Only runs if the build above succeeded. `if: always()` here would prune
       # on the strength of marts that failed to refresh.
       - name: Prune landing tables

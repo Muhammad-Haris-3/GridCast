@@ -11,6 +11,7 @@ and the frontend needs to say so rather than show a broken page.
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -19,7 +20,9 @@ from fastapi import APIRouter
 
 from gridcast.config import get_settings
 from gridcast.db import fetch_all, fetch_one
+from gridcast.usage import budget_status
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -224,6 +227,7 @@ def status() -> dict[str, Any]:
         "warnings": [],
         "spine": None,
         "recent_runs": [],
+        "transfer": None,
     }
 
     if not settings.readonly_role_in_use:
@@ -276,6 +280,31 @@ def status() -> dict[str, Any]:
     payload["database"] = "ok"
     payload["spine"] = spine
     payload["recent_runs"] = runs
+
+    # Published rather than kept internal, for the same reason the integrity
+    # audit is public: the allowance that ran out on 2026-08-17 stopped the
+    # register growing, so how close it is to running out again is part of
+    # knowing whether the evidence is still accumulating. A reader who can see
+    # the scoreboard should be able to see what would take it away.
+    try:
+        payload["transfer"] = budget_status()
+        if payload["transfer"]["state"] == "warn":
+            payload["warnings"].append(
+                f"Estimated database transfer is at {payload['transfer']['fraction_used']:.0%} "
+                "of the period's allowance. Deferrable jobs stand down at 90%; issuing "
+                "and scoring do not."
+            )
+        elif payload["transfer"]["state"] == "over":
+            payload["warnings"].append(
+                f"Estimated database transfer is at {payload['transfer']['fraction_used']:.0%} "
+                "of the period's allowance. The daily calibration is standing down. "
+                "Forecasts are still being issued and scored."
+            )
+    except Exception as exc:  # noqa: BLE001 — a missing counter is not an outage
+        # Absent before sql/008 is applied, and the status page must not break
+        # over telemetry it can do without.
+        payload["transfer"] = None
+        logger.warning("transfer accounting unavailable: %s", type(exc).__name__)
 
     if not runs:
         payload["warnings"].append("No pipeline runs recorded yet — expected before M1.")

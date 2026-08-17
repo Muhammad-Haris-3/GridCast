@@ -26,6 +26,24 @@ export type RunLogEntry = {
   rows_written: number;
 };
 
+/** Estimated database egress for the current billing period.
+ *
+ * Null when the counter is unavailable — it postdates the outage it exists to
+ * predict, so a deployment without sql/008 applied is a real state, not a bug.
+ */
+export type TransferBudget = {
+  period_start_utc: string;
+  bytes_estimated: number;
+  bytes_estimated_human: string;
+  budget_bytes: number;
+  budget_human: string;
+  fraction_used: number;
+  rows_returned: number;
+  runs_recorded: number;
+  state: "ok" | "warn" | "over";
+  estimate_note: string;
+} | null;
+
 export type SystemStatus = {
   env: string;
   commit: string;
@@ -35,6 +53,7 @@ export type SystemStatus = {
   warnings: string[];
   spine: SpineSummary;
   recent_runs: RunLogEntry[];
+  transfer: TransferBudget;
   detail?: string;
   diagnosis?: string;
   driver_message?: string;

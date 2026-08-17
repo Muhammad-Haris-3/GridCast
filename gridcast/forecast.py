@@ -53,6 +53,7 @@ from gridcast.calibrate import STALE_AFTER, load_calibration
 from gridcast.config import get_settings
 from gridcast.db import connect
 from gridcast.runlog import RunContext
+from gridcast.usage import record_on_exit
 
 HORIZONS = 96
 
@@ -503,6 +504,10 @@ def write_forecasts(
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("forecast")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Print without writing")
     args = parser.parse_args()

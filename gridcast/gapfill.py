@@ -29,6 +29,7 @@ from gridcast.db import connect
 from gridcast.ingest import ingest_source
 from gridcast.runlog import RunContext
 from gridcast.sources import REGISTRY, SourceSpec
+from gridcast.usage import record_on_exit
 
 # How far behind now to stop looking. A period that ended twenty minutes ago has
 # not necessarily been published yet, and treating it as missing would have the
@@ -132,6 +133,10 @@ def heal(spec: SourceSpec, *, lookback: timedelta, run_id: uuid.UUID) -> tuple[i
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("gapfill")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lookback", type=int, default=14, help="Days back to inspect")
     parser.add_argument("--source", choices=sorted(REGISTRY), help="Limit to one source")

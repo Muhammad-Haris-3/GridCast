@@ -35,6 +35,7 @@ import psycopg
 
 from gridcast.config import get_settings
 from gridcast.db import connect
+from gridcast.usage import record_on_exit, should_decline
 
 # Past this, the calibration in force is old enough to say so. It is not an
 # error: intervals fitted on a year are still very nearly right after a few
@@ -157,6 +158,10 @@ def load_calibration() -> tuple[dict[tuple[int, int], dict[str, float]], datetim
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("calibrate")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--show", action="store_true", help="Print the calibration in force without computing one"
@@ -176,6 +181,18 @@ def main() -> int:
         for (low, high), offsets in sorted(quantiles.items()):
             spread = "  ".join(f"{name} {value:+8.2f}" for name, value in sorted(offsets.items()))
             print(f"  h{low:>3}-{high:<3} {spread}")
+        return 0
+
+    # The one job in the pipeline that should stand down when the allowance is
+    # nearly gone. It is the largest single read in the project — a year of
+    # actuals — and its output is the only one that genuinely tolerates being a
+    # day old: issuing keeps the previous calibration and says how stale it is.
+    #
+    # Issuing and scoring deliberately do NOT consult this. A forecast not
+    # written is evidence permanently absent from the register, and spending
+    # the last of an allowance on it is the right trade.
+    if should_decline("calibrate"):
+        print("calibration skipped; the set in force stays in force")
         return 0
 
     run_id, rows = compute_and_store()

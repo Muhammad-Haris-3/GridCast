@@ -48,6 +48,7 @@ from api.routers import plan as plan_router
 from api.routers import status as status_router
 from api.routers.status import _redact
 from gridcast.config import get_settings
+from gridcast.usage import record_on_exit
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
 
@@ -196,6 +197,10 @@ def build(out_dir: Path) -> int:
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("snapshot")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--out",

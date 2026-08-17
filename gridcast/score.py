@@ -32,6 +32,7 @@ import uuid
 from gridcast.config import get_settings
 from gridcast.db import connect
 from gridcast.runlog import RunContext
+from gridcast.usage import record_on_exit
 
 # The MASE denominator, computed on history and stored with each score so the
 # ratio stays reproducible years later even if the reference series is revised.
@@ -88,6 +89,10 @@ WHERE i.is_matured
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("score")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()

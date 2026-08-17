@@ -112,6 +112,54 @@ export default async function StatusPage() {
         </section>
       </div>
 
+      {status.transfer && (
+        <>
+          <h2>Database transfer</h2>
+          <div className={status.transfer.state === "ok" ? "card" : "card caution"}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 14,
+                flexWrap: "wrap",
+                marginBottom: 20,
+              }}
+            >
+              <span
+                className={
+                  status.transfer.state === "ok"
+                    ? "pill ok"
+                    : status.transfer.state === "warn"
+                      ? "pill warn"
+                      : "pill bad"
+                }
+              >
+                {Math.round(status.transfer.fraction_used * 100)}% used
+              </span>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>
+                ~{status.transfer.bytes_estimated_human} of {status.transfer.budget_human} since{" "}
+                {status.transfer.period_start_utc.slice(0, 10)}
+              </span>
+            </div>
+
+            <div className="meter">
+              <i style={{ width: `${Math.min(100, status.transfer.fraction_used * 100)}%` }} />
+            </div>
+
+            <p style={{ color: "var(--muted)", fontSize: 13.5, margin: "22px 0 0" }}>
+              {status.transfer.rows_returned.toLocaleString("en-GB")} rows over{" "}
+              {status.transfer.runs_recorded.toLocaleString("en-GB")} recorded runs. This is the
+              allowance that ran out on 17 August 2026 and stopped the pipeline writing, not only
+              the site reading &mdash; which is why it is on this page rather than in a private
+              dashboard.
+            </p>
+            <p style={{ color: "var(--faint)", fontSize: 12.5, margin: "12px 0 0" }}>
+              {status.transfer.estimate_note}
+            </p>
+          </div>
+        </>
+      )}
+
       {status.warnings.length > 0 && (
         <>
           <h2>Warnings</h2>

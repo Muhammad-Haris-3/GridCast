@@ -17,8 +17,42 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
 
 from gridcast.config import get_settings
+from gridcast.usage import METER
 
 logger = logging.getLogger(__name__)
+
+
+class MeteredCursor(psycopg.Cursor):
+    """A cursor that counts what it hands back (NFR-13).
+
+    Metering lives here rather than in :func:`fetch_all` because most of this
+    project does not use :func:`fetch_all`. The feature loaders, the seal job
+    and the audit all take a cursor from :func:`connect` and call `fetchall`
+    directly, and those are the large reads — an accounting layer wrapped
+    around the convenience helpers would have measured everything except the
+    queries that caused the outage.
+
+    Counting on fetch rather than on execute is deliberate: a server-side
+    aggregate returns one row whatever it scanned, and it is the row that
+    crosses the wire and draws on the allowance. This measures transfer, not
+    work done.
+    """
+
+    def fetchone(self):
+        row = super().fetchone()
+        if row is not None:
+            METER.record([row])
+        return row
+
+    def fetchmany(self, size=None):
+        rows = super().fetchmany(size)
+        METER.record(rows)
+        return rows
+
+    def fetchall(self):
+        rows = super().fetchall()
+        METER.record(rows)
+        return rows
 
 
 def resolve_attempts(dsn: str) -> list[str]:
@@ -117,7 +151,7 @@ def _open(dsn: str) -> psycopg.Connection:
 
     for attempt in attempts:
         try:
-            return psycopg.connect(attempt, row_factory=dict_row)
+            return psycopg.connect(attempt, row_factory=dict_row, cursor_factory=MeteredCursor)
         except psycopg.OperationalError as exc:
             failures.append((_address_of(attempt), exc))
 

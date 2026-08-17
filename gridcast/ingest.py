@@ -23,6 +23,7 @@ from gridcast.db import connect
 from gridcast.landing import write_records
 from gridcast.runlog import RunContext
 from gridcast.sources import DAILY, REGISTRY, SCHEDULED, SourceSpec
+from gridcast.usage import record_on_exit
 
 # These are free, public, unfunded services. A pause between requests is not
 # politeness for its own sake — an impolite client gets the project blocked, and
@@ -97,6 +98,10 @@ def ingest_source(
 
 
 def main() -> int:
+    # Registered before any work, so a run that dies mid-read still
+    # accounts for what it spent (NFR-13).
+    record_on_exit("ingest")
+
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--source", choices=sorted(REGISTRY), help="Ingest one named source")

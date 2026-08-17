@@ -47,6 +47,20 @@ class Settings(BaseSettings):
     maturity_hours: int = 24
     stability_hours: int = 6
 
+    # The day of the month the database's transfer allowance resets (NFR-13).
+    #
+    # Not necessarily the 1st — it follows the provider's billing period, and
+    # measuring usage over a calendar month when the reset falls mid-month
+    # would report a figure that is wrong in both directions at once: it counts
+    # bytes that have already been forgiven and misses bytes that have not.
+    # Clamped to 1-28 where it is used, so no month lacks the day.
+    billing_period_day: int = 1
+
+    # Bytes of transfer the plan allows per period. Zero falls back to the
+    # published free-tier figure in gridcast.usage. Set it here when the plan
+    # changes, rather than editing the constant.
+    transfer_budget_bytes: int = 0
+
     @field_validator("env")
     @classmethod
     def _reject_anything_that_is_not_a_label(cls, value: str) -> str:
