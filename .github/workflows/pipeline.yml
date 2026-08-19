@@ -110,6 +110,12 @@ jobs:
       # derived JSON would grow the repository without ever being read. Keeping
       # it to one commit also makes it unmistakable that this is not the record
       # — the register is in Postgres and the seals are on main.
+      #
+      # This branch carries data, not a site. Vercel deploys every branch it is
+      # given, so each of these 48 daily pushes queued a build that failed on
+      # "Root Directory web does not exist" — a red mark every half hour for a
+      # branch that was never meant to be built. web/vercel.json turns
+      # deployments off for it by name.
       - name: Publish snapshots
         if: always()
         env:
