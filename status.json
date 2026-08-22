@@ -1,0 +1,26 @@
+{
+  "snapshot": {
+    "name": "status",
+    "captured_at_utc": "2026-08-22T21:48:16.102226+00:00",
+    "commit": "73881875f4e72f065bc5c632500abec908c67494",
+    "params": null
+  },
+  "payload": {
+    "env": "local",
+    "commit": "73881875f4e72f065bc5c632500abec908c67494",
+    "milestone": "M9 \u2014 operational resilience",
+    "serving_host": "ep-sweet-unit-ay0ookfd-pooler.c-5.us-east-2.aws.neon.tech/neondb",
+    "database": "unreachable",
+    "readonly_role_in_use": false,
+    "warnings": [
+      "Serving is using the pipeline database role. Configure GRIDCAST_READONLY_DATABASE_URL so the API cannot write.",
+      "The project's data transfer quota is spent \u2014 bytes read out of the database, not storage and not compute hours. It resets with the billing period; until then only an upgrade clears it. Everything that reads draws on it: the serving API, the scheduled pipeline, and any job that pulls whole tables to a runner."
+    ],
+    "spine": null,
+    "recent_runs": [],
+    "transfer": null,
+    "detail": "OperationalError",
+    "diagnosis": "The project's data transfer quota is spent \u2014 bytes read out of the database, not storage and not compute hours. It resets with the billing period; until then only an upgrade clears it. Everything that reads draws on it: the serving API, the scheduled pipeline, and any job that pulls whole tables to a runner.",
+    "driver_message": "connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits."
+  }
+}

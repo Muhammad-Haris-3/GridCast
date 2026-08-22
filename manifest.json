@@ -1,0 +1,18 @@
+{
+  "captured_at_utc": "2026-08-22T21:48:16.102226+00:00",
+  "commit": "73881875f4e72f065bc5c632500abec908c67494",
+  "files": {
+    "status": {
+      "captured_at_utc": "2026-08-22T21:48:16.102226+00:00"
+    }
+  },
+  "failed": {
+    "forecast_current": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+    "accuracy": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+    "leaderboard": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+    "models": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+    "integrity": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits.",
+    "plan": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your project has exceeded the data transfer quota. Upgrade your plan to increase limits."
+  },
+  "note": "Derived cache of the serving payloads, rebuilt every pipeline run. The forecast register and the monthly seals are the record; this is not."
+}
