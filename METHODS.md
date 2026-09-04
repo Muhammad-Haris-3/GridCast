@@ -27,9 +27,28 @@ including the ones that make the project look careless.
 
 ### 1.2 What cannot yet be claimed
 
-**The live accuracy figures do not exist yet.** The register is young. The
-accuracy page publishes nothing until a horizon group holds 200 scored points
-and reports how far off that is instead.
+**The challenger's live figures do not measure the challenger.** As of
+2026-09-04 the accuracy page publishes every horizon group: 14,513 scored
+points, all issued before the outcome existed. Three of the four series mean
+what they appear to mean. G2's does not.
+
+Every G2 point in the register was issued between 12 and 15 August, when
+issuing read weather from the vintage relation — which, being backward-looking
+by construction, holds no row for any period being forecast. The forward
+weather features were NaN at every horizon, and gradient boosting accepts NaN
+silently, so the model issued and scored as though nothing were wrong. Those
+are the scores of G2 without the inputs that distinguish it from the baselines,
+and they are not comparable to its backtest of MASE 0.46–0.55. The interval
+coverage says the same thing independently: 42–51% against a nominal 80%.
+
+The rows stay in the register, which cannot be edited and should not be. They
+are an accurate record of what was issued. They are simply not a measurement of
+the model, and this section exists so that nobody reads them as one. G2 resumed
+issuing with live forecast weather on 2026-09-04; its record starts there.
+
+**The champion's and the benchmark's figures do stand.** B0, B1 and
+ESO_published have issued every run since 2026-08-12 and take no weather
+features, so nothing about the fault above touches them.
 
 **The hit rate does not exist yet.** Whether a recommendation actually lands in
 a good window — the thing that decides if the product works — is unmeasured.

@@ -97,6 +97,13 @@ M7 is the one milestone still open, and it is waiting on data rather than on
 code: the pre-registered promotion rule cannot be evaluated until enough
 forecasts have been scored.
 
+**The challenger did not issue between 2026-08-15 and 2026-09-04**, and for the
+three days before that it issued without the weather it was trained on. Both
+had the same cause and neither was noticed at the time. What that means for the
+figures below is set out under *First live figures*; what it means for the
+project is that a silent failure survived three weeks of a system built to make
+failures loud, which is recorded here rather than quietly repaired.
+
 M9 was not planned. On 2026-08-17 the database's free-tier **data transfer**
 allowance ran out and everything stopped at once — the API returned 500s, the
 pages went blank, and the pipeline could not read either, so the register
@@ -131,17 +138,59 @@ regression obvious on the day it lands, not to say how much allowance is left.
 | M4 Baselines & backtesting harness | ✅ Complete |
 | M5 Live forecasting loop | ✅ Complete — *the defensible stopping point* |
 | M6 Modelling depth | ✅ Complete |
-| M7 Champion/challenger & monitoring | Waiting on data — the pre-registered rule needs ~1,440 scored points per horizon group, about 10 days of live operation |
+| M7 Champion/challenger & monitoring | Waiting on data — the pre-registered rule needs ~1,440 scored points per horizon group. The challenger's clock restarted on 2026-09-04: everything scored before that was issued without weather features |
 | M8 Product & communication | ✅ Planner, decision memo, methods |
 | M9 Operational resilience | ✅ Site serves from published snapshots; issuing reads bounded by what it consults |
+| M9.1 The three-week hole | ✅ Issuing reads the live weather forecast; a challenger that cannot build is recorded in the run log rather than printed |
 
 Four models issue forecasts every run — a seasonal-naive champion, a persistence
 baseline, a gradient-boosting challenger, and National Grid ESO's own forecast
-recorded at the horizon we received it.
+recorded at the horizon we received it. Three of them have issued every run
+since 2026-08-12. The fourth is the subject of the caveat below.
 
-**No accuracy figures are published yet.** A forecast becomes scoreable about a
-day after it is issued, and the accuracy page refuses to print a number until a
-horizon group holds 200 scored points. It reports how far off that is instead.
+### First live figures
+
+The accuracy page refuses to print a number until a horizon group holds 200
+scored points. Every group has now passed it. **14,513 forecasts have been
+scored**, all of them issued before the outcome existed, none of them
+reconstructed.
+
+MASE is the ratio to the seasonal-naive baseline on the same periods: below 1.0
+beats it, 1.0 is it. At 0–3 hours:
+
+| Model | n | MAE gCO₂/kWh | MASE |
+|---|---:|---:|---:|
+| ESO_published — National Grid's own forecast | 416 | 21.5 | 0.54 |
+| G2_gbm_v1 — the challenger *(see caveat)* | 341 | 32.2 | 0.81 |
+| B1_seasonal_naive_q_v1 — the champion | 422 | 49.9 | 1.26 |
+| B0_persistence_v1 — the reference baseline | 416 | 55.0 | 1.39 |
+
+The headline is not flattering and is not meant to be: **ESO's published
+forecast is the most accurate thing on this scoreboard, at every horizon.**
+That is worth knowing, and it is the kind of result a project that graded itself
+after the fact would have found a reason not to publish. The champion is a
+baseline on purpose (see M5), so losing to a national control room's model is
+the expected shape of the first scoreboard, not a surprise.
+
+**The caveat, and it is a large one.** Every G2 figure above was produced
+between 12 and 15 August, when a crossed wire meant issuing read weather from a
+relation that holds no row for any period being forecast. Its forward weather
+features were all NaN, and gradient boosting consumes NaN without complaining.
+So those are the scores of a model running without the inputs that distinguish
+it — not of G2 as designed and backtested, which scored MASE 0.46–0.55
+out-of-sample. The two numbers are not comparable and the gap is not evidence
+of anything.
+
+G2 resumed issuing on 2026-09-04 with the weather it was built to use. Its live
+record starts again from there, and until it has 200 scored points of its own
+the figures above should be read as a floor on a broken configuration rather
+than as a measurement of the model. Nothing has been removed from the register
+— the rows are evidence of what was issued, and the register cannot be edited —
+but they are the wrong rows to judge the challenger by.
+
+The intervals tell the same story from the other side: G2's 80% band covered
+42–51% of outcomes, against a nominal 80%. An interval calibrated on a model
+with weather, applied to a model without it, is not calibrated at all.
 
 ---
 
