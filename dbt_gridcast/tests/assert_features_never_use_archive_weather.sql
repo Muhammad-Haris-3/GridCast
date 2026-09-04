@@ -7,46 +7,38 @@
     beautifully and fail in production, and the gap would stay invisible until
     the live scoreboard opened.
 
-    fct_weather_period is the model features are built from, and it must draw
-    from the vintage source only. This test asserts the dependency directly
-    rather than trusting a comment: if somebody repoints it at the archive, the
-    build fails.
+    TWO models feed the feature builder and both are checked here:
 
-    The same reasoning applies to fct_demand_current, which resolves demand to
-    its latest revision rather than the vintage known at issue time.
+      fct_weather_period       the vintage source, which training reads
+      fct_weather_period_live  the forward forecast, which issuing reads
+
+    Either one repointed at the archive is the same leak, and the second is the
+    easier mistake to make: it is the model that legitimately carries future
+    hours, so an archive join there looks superficially reasonable.
+
+    The dependency is asserted directly rather than trusted to a comment. A
+    model that does not exist yet cannot violate anything, so each check is
+    guarded on the relation being present — that is what lets this test run
+    against a partially built warehouse without reporting a false violation.
 */
 
-with feature_sources as (
-    select
-        view_definition
-    from information_schema.views
-    where table_schema = 'marts'
-      and table_name in ('fct_mix_wide')
-
+with checked as (
+    select 'fct_weather_period'      as model
     union all
+    select 'fct_weather_period_live' as model
+),
 
-    select
-        pg_get_viewdef(c.oid, true) as view_definition
-    from pg_class c
-    join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'marts'
-      and c.relname in ('fct_mix_wide')
-)
-
-select 'fct_weather_period must not read stg_om_archive' as violation
-where exists (
-    select 1
-    from information_schema.tables
-    where table_schema = 'marts' and table_name = 'fct_weather_period'
-)
-and (
-    select count(*)
+reads_the_archive as (
+    select distinct dependent.relname as model
     from pg_depend d
-    join pg_rewrite r on r.oid = d.objid
-    join pg_class dependent on dependent.oid = r.ev_class
+    join pg_rewrite r  on r.oid = d.objid
+    join pg_class dependent  on dependent.oid = r.ev_class
     join pg_class referenced on referenced.oid = d.refobjid
     join pg_namespace n on n.oid = referenced.relnamespace
-    where dependent.relname = 'fct_weather_period'
-      and n.nspname = 'staging'
+    where n.nspname = 'staging'
       and referenced.relname = 'stg_om_archive'
-) > 0
+)
+
+select c.model || ' must not read stg_om_archive' as violation
+from checked c
+join reads_the_archive a on a.model = c.model

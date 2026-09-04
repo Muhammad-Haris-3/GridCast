@@ -40,6 +40,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from gridcast.db import connect, fetch_one  # noqa: E402
+from gridcast.features import WEATHER_TRAILING_DAYS  # noqa: E402
 
 
 def table_size(table: str) -> dict:
@@ -184,12 +185,23 @@ def main():
         default=7,
         help="Days of lnd_om_archive to keep (default: 7).",
     )
+    # lnd_om_forecast is no longer write-only. fct_weather_period_live is a view
+    # over it, and issuing reads that view WEATHER_TRAILING_DAYS behind the
+    # anchor for the wind ramp — so this retention is now a serving dependency
+    # rather than housekeeping, and a value below the serving window would empty
+    # the oldest part of every forecast read.
+    #
+    # Derived, and one day wider than the window rather than equal to it: equal
+    # would leave the oldest rows of each read racing the prune that runs at
+    # 04:00. The table holds three days of five locations at hourly grain, so
+    # the extra day is a rounding error against the 512 MB ceiling.
     parser.add_argument(
         "--forecast-keep-days",
         type=int,
-        default=3,
-        help="Days of lnd_om_forecast to keep (default: 3). Forecasts older than "
-        "this are superseded and carry no information.",
+        default=WEATHER_TRAILING_DAYS + 1,
+        help=f"Days of lnd_om_forecast to keep (default: {WEATHER_TRAILING_DAYS + 1}, "
+        "one more than the serving trailing window). Forecasts older than this are "
+        "superseded, but issuing reads this table at every run.",
     )
     parser.add_argument(
         "--demand-keep-days",
@@ -217,6 +229,18 @@ def main():
     # -----------------------------------------------------------------------
     # Pre-flight
     # -----------------------------------------------------------------------
+    # Refused rather than warned. Trimming lnd_om_forecast below the window
+    # issuing reads does not fail here — it fails four hours later, in a job
+    # that catches its own exception, as a challenger that quietly stops
+    # forecasting. That failure has already cost this project three weeks once.
+    if args.forecast_keep_days <= WEATHER_TRAILING_DAYS:
+        print(
+            f"REFUSING: --forecast-keep-days {args.forecast_keep_days} is not more "
+            f"than the {WEATHER_TRAILING_DAYS}-day window issuing reads from "
+            "lnd_om_forecast. Serving would lose the oldest part of every read."
+        )
+        return 1
+
     db = database_size()
     print(f"Database size: {db['size_pretty']}  ({db['size_bytes']:,} bytes)")
     print()
@@ -324,4 +348,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # The return value is the exit code. main() returns None on the normal path,
+    # which SystemExit treats as zero; the pre-flight refusal returns 1 and has
+    # to reach the workflow step, or a prune that declined to run looks
+    # identical to one that ran.
+    raise SystemExit(main())

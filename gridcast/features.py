@@ -166,32 +166,61 @@ def load_mix_history(since: datetime | None = None) -> pd.DataFrame:
     return frame.set_index("sp_start_utc")
 
 
-def load_weather_history(
-    since: datetime | None = None, until: datetime | None = None
-) -> pd.DataFrame:
-    """Weather from the FORECAST VINTAGE, pivoted wide by location.
+# The two weather relations, and the reason there are two.
+#
+# Both hold "a forecast, as issued". They differ in WHEN it was issued, and that
+# difference decides which one a caller may read.
+#
+#   VINTAGE  what was predicted at a past moment. Backward-looking by
+#            construction — fetch_vintage clamps its window to the past — so it
+#            holds nothing for an hour that has not happened yet.
+#   LIVE     what is predicted now, for the next three days. The only source
+#            that covers a target period before that period arrives.
+#
+# Training reads the vintage. Issuing reads the live one. Crossing them breaks
+# in one direction loudly and in the other silently:
+#
+#   Issuing from the vintage finds no row at any target. Before 2026-08-18 that
+#   produced NaN weather features and a forecast anyway, for three days, with
+#   nothing in the logs; after the serving window narrowed it produced an empty
+#   frame, a missing-column KeyError, and a challenger that stopped issuing for
+#   three weeks. Same cause, and the loud version was the lucky one.
+#
+#   Training from the live one is the leak. For a past hour lnd_om_forecast
+#   holds what was predicted shortly BEFORE that hour, so a 48-hour-out origin
+#   would train against weather it could not possibly have held — the classic
+#   backtests-well-fails-live failure, and the reason the vintage source is
+#   ingested at all.
+#
+# Two named functions rather than one function with a flag: a flag defaults, and
+# the default would be right for exactly one of the two callers.
+WEATHER_VINTAGE_RELATION = "marts.fct_weather_period"
+WEATHER_LIVE_RELATION = "marts.fct_weather_period_live"
 
-    Drawn from `fct_weather_period`, which reads the materialised
-    `fct_weather_hour` table — typed weather extracted from `lnd_om_vintage`.
-    Never the archive.
 
-    `until` bounds the read forward for issuing runs, which need weather only
-    as far as their furthest target. Training passes neither bound and reads
-    everything, as it must.
+def _load_weather(relation: str, since: datetime | None, until: datetime | None) -> pd.DataFrame:
+    """One query and one pivot, over whichever weather relation was named.
+
+    The relation is interpolated into the SQL, so it is checked against the two
+    module constants rather than trusted. Nothing outside this module chooses
+    it, and that is the point: a caller picks a loader, never a table.
     """
+    if relation not in (WEATHER_VINTAGE_RELATION, WEATHER_LIVE_RELATION):
+        raise ValueError(f"unknown weather relation: {relation!r}")
+
     settings = get_settings()
     locations = tuple(FEATURE_LOCATIONS)
     with connect(url=settings.database_url, readonly=True) as conn, conn.cursor() as cur:
         cur.execute(
-            """
+            f"""
             SELECT sp_start_utc, location_id,
                    wind_speed_100m_kmh, temperature_2m_c, shortwave_radiation_wm2
-              FROM marts.fct_weather_period
+              FROM {relation}
              WHERE location_id = ANY(%s)
                AND (%s::timestamptz IS NULL OR sp_start_utc >= %s)
                AND (%s::timestamptz IS NULL OR sp_start_utc <= %s)
              ORDER BY sp_start_utc
-            """,
+            """,  # noqa: S608 — one of two module constants, checked immediately above
             (list(locations), since, since, until, until),
         )
         rows = cur.fetchall()
@@ -209,6 +238,81 @@ def load_weather_history(
     )
     wide.columns = [f"{measure}__{location}" for measure, location in wide.columns]
     return wide
+
+
+def load_weather_history(
+    since: datetime | None = None, until: datetime | None = None
+) -> pd.DataFrame:
+    """Weather from the FORECAST VINTAGE, pivoted wide by location. TRAINING.
+
+    Drawn from `fct_weather_period`, which reads the materialised
+    `fct_weather_hour` table — typed weather extracted from `lnd_om_vintage`.
+    Never the archive, and never the live forecast.
+
+    Training passes neither bound and reads everything, as it must: it is
+    measuring the past. The bounds exist for backtests over a slice.
+
+    NOT FOR ISSUING. A live run finds no vintage row at any of its targets; see
+    WEATHER_VINTAGE_RELATION above for what that cost.
+    """
+    return _load_weather(WEATHER_VINTAGE_RELATION, since, until)
+
+
+def load_weather_forecast(since: datetime, until: datetime) -> pd.DataFrame:
+    """The LIVE forward forecast, pivoted wide by location. ISSUING.
+
+    Drawn from `fct_weather_period_live`, a view over `lnd_om_forecast` — what
+    Open-Meteo predicts now, which is what a production system genuinely holds
+    at issue time.
+
+    Both bounds are required, because both are known: issuing reaches back
+    WEATHER_TRAILING_DAYS for the ramp and forward no further than its furthest
+    target. An unbounded read here would fetch rows the reindex then drops, on a
+    database metered in bytes read.
+    """
+    return _load_weather(WEATHER_LIVE_RELATION, since, until)
+
+
+class WeatherCoverageError(RuntimeError):
+    """The weather loaded does not reach the periods being forecast."""
+
+
+def assert_weather_reaches(weather: pd.DataFrame, targets: pd.DatetimeIndex) -> pd.DataFrame:
+    """Refuse a weather frame that stops before the first target.
+
+    build_features consumes weather by reindexing onto the targets, so a frame
+    that ends before them is not an error there — it is NaN, in every weather
+    column, for every horizon. HistGradientBoosting takes NaN without
+    complaining, and the run issues a forecast that looks like G2 and is not.
+
+    Those rows go into an append-only register nothing can edit, and are scored
+    against ESO as though they were the model's real output. A hole in the
+    series is recoverable evidence; a stretch of forecasts from a silently
+    different model is not, because nothing in the register says which is which.
+
+    So it is checked before issuing rather than discovered after scoring.
+    Reaching the FIRST target is the bar: partial forward coverage leaves the
+    tail NaN, which the model handles natively and which happens legitimately
+    when the upstream forecast is short. No forward coverage at all is a broken
+    pipeline, and the run log should say so.
+    """
+    if weather.empty:
+        raise WeatherCoverageError(
+            "no weather rows for the serving window — the live forecast relation "
+            "returned nothing. Check that om_forecast is still ingesting, and that "
+            "prune_landing.py has not trimmed lnd_om_forecast below the trailing "
+            "window."
+        )
+
+    furthest = weather.index.max()
+    if furthest < targets.min():
+        raise WeatherCoverageError(
+            f"weather stops at {furthest:%Y-%m-%d %H:%M}Z, before the first target "
+            f"at {targets.min():%Y-%m-%d %H:%M}Z. Every forward weather feature "
+            "would be NaN and the forecast would not be G2. This is what reading "
+            "the vintage relation at issue time looks like."
+        )
+    return weather
 
 
 def calendar_features(targets: pd.DatetimeIndex) -> pd.DataFrame:

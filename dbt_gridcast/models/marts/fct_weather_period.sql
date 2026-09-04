@@ -1,22 +1,29 @@
 {{ config(materialized='view') }}
 
 /*
-    fct_weather_period — weather aligned to settlement periods.
+    fct_weather_period — VINTAGE weather aligned to settlement periods.
 
-    Weather is hourly; the grid is half-hourly. The join therefore needs an
-    explicit decision, and design decision D-2 deferred it to measurement:
-    interpolate linearly to the half hour, or hold the hour's value.
+    What was predicted at a past moment, as issued. This is the model TRAINING
+    reads, and the only honest source for it: it reproduces the quality of
+    information a forecast would actually have had at that time.
 
-    Interpolation is intuitive but manufactures a value nobody published.
-    Step-hold is honest but puts a sawtooth into a smooth physical variable. D-2
-    decides by measuring which produces lower backtest error on the baseline
-    model, and that measurement needs the weather backfill, which is still
-    running.
+    It cannot serve issuing, and that is not a limitation to work around. The
+    vintage endpoint is backward-looking by construction — gridcast.sources.
+    open_meteo.fetch_vintage clamps its window to the past — so this model holds
+    no row for any hour that has not happened yet, which is precisely the set of
+    hours a live forecast needs. Issuing reads fct_weather_period_live.
 
-    Step-hold is the provisional default because it invents nothing. When D-2
-    resolves, changing `weather_alignment` changes it once, here, and every
-    downstream consumer inherits the same answer — which is the reason this
-    model exists at all rather than each feature aligning weather its own way.
+    That distinction went unmade for three weeks and cost the challenger. G2
+    issued against this model, found nothing at its targets, and produced
+    forecasts with every forward weather feature NaN — silently, because
+    HistGradientBoosting accepts NaN without complaint. Then the serving weather
+    window narrowed to three days, this model stopped advancing for want of a
+    vintage ingest, the frame came back empty, and G2 stopped issuing at all.
+    The visible failure and the invisible one had the same cause.
+
+    The alignment to half-hourly periods lives in the weather_periods macro,
+    which this model and the live one both call, so a model trained here and
+    served there is looking at the same variable.
 
     MATERIALISED AS A VIEW, deliberately, and for the third time in this project
     the same reasoning applies. The source is hourly; this model is half-hourly,
@@ -29,32 +36,10 @@
     the generation mix, and it was about to cost another 50 MB here as the
     weather history completes.
 
-    The alignment decision still happens exactly once, in this model. Only the
-    storage changed.
+    Reads the materialised hourly table, not staging. That indirection is what
+    allows lnd_om_vintage to be pruned: nothing else touches the raw payloads,
+    so once they are typed into fct_weather_hour the 184 MB of JSON behind them
+    is dead weight.
 */
 
-with vintage as (
-    -- Reads the materialised hourly table, not staging. That indirection is
-    -- what allows lnd_om_vintage to be pruned: nothing else touches the raw
-    -- payloads, so once they are typed into fct_weather_hour the 184 MB of
-    -- JSON behind them is dead weight.
-    select * from {{ ref('fct_weather_hour') }}
-),
-
-periods as (
-    select sp_start_utc, date_trunc('hour', sp_start_utc) as hour_start_utc
-    from {{ ref('dim_settlement_period') }}
-)
-
-select
-    p.sp_start_utc::text || '|' || v.location_id as weather_key,
-    p.sp_start_utc,
-    v.location_id,
-    v.temperature_2m_c,
-    v.wind_speed_100m_kmh,
-    v.shortwave_radiation_wm2,
-    v.cloud_cover_pct,
-    v.knowable_at_utc,
-    '{{ var("weather_alignment") }}' as alignment_method
-from periods p
-join vintage v on v.hour_start_utc = p.hour_start_utc
+{{ weather_periods(ref('fct_weather_hour')) }}

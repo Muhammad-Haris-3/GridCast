@@ -348,10 +348,11 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
     from gridcast.features import (
         SERVING_HISTORY_DAYS,
         WEATHER_TRAILING_DAYS,
+        assert_weather_reaches,
         build_features,
         load_intensity_history,
         load_mix_history,
-        load_weather_history,
+        load_weather_forecast,
     )
 
     # Issuing reaches 168 hours back. Loading the rest of the archive 48 times
@@ -366,11 +367,29 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
     # targets and across the 48 periods before the anchor, and nowhere between
     # — so the rows in between were being fetched only to be dropped by the
     # reindex. Bounded forward at the furthest target for the same reason:
-    # a vintage row beyond it cannot reach any feature.
-    weather = load_weather_history(
+    # a row beyond it cannot reach any feature.
+    #
+    # THE LIVE FORECAST, not the vintage. Issuing read the vintage relation
+    # until 2026-09-04, which holds no row for an hour that has not happened
+    # yet: first that made every forward weather feature NaN and issued anyway,
+    # then it made the frame empty and stopped G2 issuing at all.
+    weather = load_weather_forecast(
         anchor - timedelta(days=WEATHER_TRAILING_DAYS),
         until=max(targets),
     )
+    assert_weather_reaches(weather, targets)
+
+    # Partial forward coverage is legitimate — the upstream forecast is finite
+    # and a run near its edge can outrun it — but it is not silent. The tail
+    # horizons carry NaN weather, and a leaderboard that degrades at H4 for a
+    # week is worth being able to explain from the logs.
+    furthest_weather = weather.index.max()
+    if furthest_weather < max(targets):
+        print(
+            f"  G2_gbm_v1               weather stops at "
+            f"{furthest_weather:%Y-%m-%d %H:%M}Z, short of the furthest target "
+            f"at {max(targets):%Y-%m-%d %H:%M}Z — tail horizons issue with NaN weather"
+        )
 
     frame = build_features(
         run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
@@ -423,6 +442,39 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
             )
         )
     return rows
+
+
+def record_challenger_failure(
+    version: str, run_id: uuid.UUID, run_at: datetime, exc: BaseException
+) -> None:
+    """Put a caught challenger failure in the run log, where it can be seen.
+
+    Catching it is right: a challenger that cannot build its features must not
+    stop the champion and the benchmark being recorded. Catching it into a
+    print is what made G2's three-week absence invisible — stdout belongs to
+    the runner and expires with it, while landing.run_log is what the status
+    page publishes and what anyone outside this process can read.
+
+    Exactly one row per model per run, either way. A model that builds is
+    recorded by the write loop; one that does not is recorded here, and the two
+    paths cannot both fire.
+
+    Swallows its own failure. This runs after something has already gone wrong,
+    and the likeliest reason the row cannot be written — an unreachable
+    database — is also a likely reason the forecast failed. Losing the log
+    entry is bad; losing the champion's forecast to a logging error is worse.
+    """
+    try:
+        with RunContext(
+            run_id,
+            source=version,
+            job="forecast",
+            window_from=run_at,
+            window_to=run_at + timedelta(hours=48),
+        ) as run:
+            run.failure = exc
+    except Exception as log_exc:  # noqa: BLE001
+        print(f"  {version:<24} could not record the failure: {type(log_exc).__name__}")
 
 
 NOTES = {
@@ -636,6 +688,7 @@ def main() -> int:
             # being recorded. Their series are the evidence; a hole in them
             # cannot be refilled later because the moment has passed.
             print(f"  G2_gbm_v1               FAILED {type(exc).__name__}: {exc}")
+            record_challenger_failure("G2_gbm_v1", run_id, run_at, exc)
 
     total = 0
     for version, model_rows in issued.items():
