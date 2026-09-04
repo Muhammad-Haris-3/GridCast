@@ -39,7 +39,19 @@ SCHEDULED: tuple[str, ...] = (
 # ci_regional and ex_price are DEFERRED to M8 and so are absent here. On the
 # first live pipeline run they wrote 13,240 of 13,888 rows — 95% — for data no
 # milestone before M8 consumes, and regional can never be scored at all.
-DAILY: tuple[str, ...] = ("om_archive",)
+#
+# om_vintage belongs here and was missing, which is what broke the challenger.
+# fct_weather_hour is incremental precisely so lnd_om_vintage can be pruned
+# daily — an arrangement that only works if something keeps putting rows back.
+# Nothing did: the vintage arrived once, by backfill, and the daily prune then
+# ate the landing table while the typed mart quietly stopped advancing. Training
+# weather ends wherever the last backfill ended, and the retrain that would have
+# revealed it has not run yet.
+#
+# One request a day over a five-day window, about 720 rows. The endpoint is
+# backward-looking, so this can never serve issuing — that is the live forecast's
+# job, and the two are kept apart in gridcast.features.
+DAILY: tuple[str, ...] = ("om_archive", "om_vintage")
 
 # Sources switched off until the milestone that needs them. Excluded from
 # ingestion AND from gap-fill: gap detection was the mechanism actually driving

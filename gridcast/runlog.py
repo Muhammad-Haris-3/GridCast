@@ -51,6 +51,9 @@ class RunContext:
         self.rows_read = 0
         self.rows_written = 0
         self.partial = False
+        # A failure the job caught itself, rather than one raised through the
+        # block. See __exit__.
+        self.failure: BaseException | None = None
         self._run_log_id: int | None = None
 
     def __enter__(self) -> RunContext:
@@ -74,13 +77,24 @@ class RunContext:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> bool:
-        if exc_type is None:
+        # A caught failure counts. Some jobs swallow their own exception on
+        # purpose — a challenger that cannot build its features must not stop
+        # the champion being recorded, because the champion's series is the
+        # evidence and the moment cannot be refilled later. Swallowing it into
+        # a print, though, is how G2 stopped issuing on 2026-08-15 and nobody
+        # noticed for three weeks: stdout belongs to the runner and is gone
+        # within days, while landing.run_log is what the status page reads and
+        # what anyone outside this process can see. Setting `failure` records
+        # the row without re-raising through the block.
+        caught = exc if exc_type is not None else self.failure
+
+        if caught is None:
             status = "partial" if self.partial else "success"
             error_class = error_detail = None
         else:
             status = "failed"
-            error_class = exc_type.__name__
-            error_detail = str(exc)[:2000]
+            error_class = type(caught).__name__
+            error_detail = str(caught)[:2000]
 
         with connect() as conn, conn.cursor() as cur:
             cur.execute(

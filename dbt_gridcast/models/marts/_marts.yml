@@ -65,6 +65,23 @@ models:
         tests: [not_null]
 
   - name: fct_weather_period
+    description: >
+      VINTAGE weather aligned to settlement periods — what was predicted at a
+      past moment, as issued. The training source. Holds no row for an hour that
+      has not happened yet, because the vintage endpoint is backward-looking by
+      construction, so it cannot serve a live forecast.
+    columns:
+      - name: weather_key
+        tests: [unique, not_null]
+
+  - name: fct_weather_period_live
+    description: >
+      The forward forecast aligned to settlement periods — what Open-Meteo
+      predicts now, for the next three days. What issuing reads, and the only
+      weather source that covers a target period before it happens. Never a
+      training source: for a past hour it holds what was predicted shortly
+      before that hour, which is better information than a 48-hour-out origin
+      could have had.
     columns:
       - name: weather_key
         tests: [unique, not_null]
