@@ -12,12 +12,15 @@ whose whole claim is honesty cannot open with three data points.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Query
 
 from gridcast.config import get_settings
 from gridcast.db import fetch_all, fetch_one
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["forecast"])
 
@@ -102,12 +105,41 @@ def accuracy(
     for row in rows:
         row["publishable"] = row["n"] >= MIN_PUBLISHABLE_N
 
+    # What the figures above leave out, published beside them.
+    #
+    # mart_live_accuracy drops scores a model issued in a configuration it was
+    # not built for, because pooling those with valid ones produces a number
+    # that describes neither. An exclusion nobody can see is an edit, so the
+    # count and the reason travel with the payload rather than living in a
+    # comment in the warehouse.
+    #
+    # None and [] mean different things and the page renders them differently:
+    # [] is "nothing was excluded", None is "this build could not say". The
+    # second happens between an API deploy and the next warehouse build, when
+    # the relation does not exist yet — and it must degrade, because a status
+    # surface that 500s during a rollout is the failure this project already
+    # had once.
+    try:
+        excluded: list[dict[str, Any]] | None = fetch_all(
+            """
+            SELECT model_version, reason, n_excluded,
+                   first_issued, last_issued, first_target, last_target
+              FROM marts.mart_excluded_scores
+             ORDER BY model_version
+            """,
+            readonly=True,
+        )
+    except Exception as exc:  # noqa: BLE001 — a missing relation is not an outage
+        logger.warning("excluded-score accounting unavailable: %s", type(exc).__name__)
+        excluded = None
+
     total = sum(row["n"] for row in rows)
     return {
         "min_publishable_n": MIN_PUBLISHABLE_N,
         "total_scored_points": total,
         "any_publishable": any(row["publishable"] for row in rows),
         "rows": rows,
+        "excluded": excluded,
         "note": (
             "Live, out-of-sample, scored after the fact. Every model is scored on "
             "identical periods: a target is included only when every model issuing "

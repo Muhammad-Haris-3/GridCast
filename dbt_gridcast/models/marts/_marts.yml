@@ -96,6 +96,18 @@ models:
               values: [false]
               quote: false
 
+  - name: mart_excluded_scores
+    description: >
+      Scored forecasts left out of mart_live_accuracy because the model was
+      issuing in a configuration it was not built for, with the count, the
+      window and the stated reason. An exclusion nobody can see is an edit;
+      this is what makes it an exclusion. Empty is the healthy state.
+    columns:
+      - name: model_version
+        tests: [not_null]
+      - name: n_excluded
+        tests: [not_null]
+
   - name: mart_absent_periods
     description: >
       Settlement periods verified absent at source. Without this the daily
