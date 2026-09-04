@@ -45,11 +45,21 @@ export type TransferBudget = {
 } | null;
 
 export type SystemStatus = {
-  env: string;
+  /** Which process produced this payload.
+   *
+   * The API answers for itself; gridcast.snapshot answers from a CI runner so
+   * the site can render without waking it. Most fields are warehouse facts and
+   * read the same either way — env and readonly_role_in_use are not, and are
+   * null from the pipeline rather than filled in with the runner's own
+   * configuration. Absent on snapshots published before 2026-09-04. */
+  reported_by?: "serving" | "pipeline";
+  /** Null unless the serving API is the reporter. */
+  env: string | null;
   commit: string;
   milestone: string;
   database: "ok" | "unreachable";
-  readonly_role_in_use: boolean;
+  /** Null unless the serving API is the reporter. */
+  readonly_role_in_use: boolean | null;
   warnings: string[];
   spine: SpineSummary;
   recent_runs: RunLogEntry[];

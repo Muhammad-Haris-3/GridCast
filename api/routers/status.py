@@ -204,39 +204,73 @@ def health() -> dict[str, Any]:
     }
 
 
-@router.get("/v1/status", tags=["status"])
-def status() -> dict[str, Any]:
+# Who produced a status payload. It is not always this process.
+#
+# gridcast.snapshot calls the same function from a GitHub Actions runner, so
+# that the site can serve a status page without waking the API or touching the
+# database. Most of what the payload carries is a fact about the WAREHOUSE —
+# the spine, the run log, the transfer meter — and is identical whoever reads
+# it. Three fields are not: env, serving_host and readonly_role_in_use describe
+# the configuration of the process that answered.
+#
+# Reported from the pipeline, those three describe the runner. The runner is
+# handed one connection string and no GRIDCAST_ENV, so the published snapshot
+# said "Environment: local" and "Read-only serving role: NOT CONFIGURED" for
+# two weeks while the API it was describing had both set correctly. A status
+# page that invents a misconfiguration is worse than one that omits a row: the
+# reader cannot tell it apart from the real thing, and this project publishes
+# its own failures precisely so that the published ones can be believed.
+#
+# So the reporter is named in the payload, and a reporter that cannot observe a
+# field returns null for it rather than its own value.
+SERVING = "serving"
+PIPELINE = "pipeline"
+
+
+def build_status(*, reported_by: str = SERVING) -> dict[str, Any]:
     """Pipeline health: spine coverage, recent runs, and role configuration.
 
     An empty run list is the honest answer rather than an error: the run log
     table exists and is written by the pipeline, so nothing in it means nothing
     has run since the retention window, not that the surface is broken.
+
+    `reported_by` says which process is answering. The serving API answers for
+    itself and fills in its own configuration; the snapshot builder answers from
+    a runner and leaves those three fields null, because it cannot see them.
     """
     settings = get_settings()
+    self_reporting = reported_by == SERVING
 
     payload: dict[str, Any] = {
-        "env": settings.env,
+        "reported_by": reported_by,
+        # Null from the pipeline, not "local" — see the comment above.
+        "env": settings.env if self_reporting else None,
+        # Kept for both reporters. It describes whoever built the payload, and
+        # `reported_by` says who that was, so it is never a claim about a
+        # process that did not answer.
         "commit": settings.build_id,
         # A literal, and it goes stale silently: the status page prints it
         # verbatim, so it said "M5" for three milestones after M5 shipped.
         # Move it with the milestone table in README.md.
         "milestone": "M9 — operational resilience",
-        "serving_host": settings.serving_host,
+        "serving_host": settings.serving_host if self_reporting else None,
         "database": "unreachable",
-        "readonly_role_in_use": settings.readonly_role_in_use,
+        "readonly_role_in_use": settings.readonly_role_in_use if self_reporting else None,
         "warnings": [],
         "spine": None,
         "recent_runs": [],
         "transfer": None,
     }
 
-    if not settings.readonly_role_in_use:
+    # Both warnings are about the answering process's own configuration, so a
+    # reporter that is not the serving process has nothing to say about either.
+    if self_reporting and not settings.readonly_role_in_use:
         payload["warnings"].append(
             "Serving is using the pipeline database role. Configure "
             "GRIDCAST_READONLY_DATABASE_URL so the API cannot write."
         )
 
-    if not settings.env_is_valid:
+    if self_reporting and not settings.env_is_valid:
         payload["warnings"].append(
             "GRIDCAST_ENV does not look like an environment label and has been "
             "suppressed. If a connection string was pasted into it, treat that "
@@ -310,3 +344,15 @@ def status() -> dict[str, Any]:
         payload["warnings"].append("No pipeline runs recorded yet — expected before M1.")
 
     return payload
+
+
+@router.get("/v1/status", tags=["status"])
+def status() -> dict[str, Any]:
+    """The serving API answering for itself.
+
+    A thin wrapper, so that `reported_by` is never a query parameter. It is a
+    fact about which process ran the code, and a caller must not be able to
+    claim it — a payload that says "serving" is a payload the serving container
+    produced.
+    """
+    return build_status(reported_by=SERVING)

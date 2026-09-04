@@ -155,8 +155,18 @@ def build(out_dir: Path) -> int:
     # precisely the payload worth publishing during an outage. Treating it like
     # the others — write only on success — would withhold the explanation at
     # the exact moment every other page needs to point at one.
+    #
+    # REPORTED AS THE PIPELINE, because that is what is running. This code
+    # executes on a GitHub Actions runner holding one connection string and no
+    # GRIDCAST_ENV, so answering as the serving process published "Environment:
+    # local" and "Read-only serving role: NOT CONFIGURED" for two weeks about an
+    # API that had both set correctly. The warehouse facts in this payload — the
+    # spine, the run log, the transfer meter — are the same whoever reads them;
+    # the serving process's own configuration is not, and is left null here
+    # rather than answered with the runner's.
     try:
-        write(out_dir / "status.json", envelope("status", status_router.status(), captured_at))
+        status_payload = status_router.build_status(reported_by=status_router.PIPELINE)
+        write(out_dir / "status.json", envelope("status", status_payload, captured_at))
         files["status"] = {"captured_at_utc": captured_at.isoformat()}
     except Exception as exc:  # noqa: BLE001 — a broken status page must not stop the rest
         failures["status"] = _reason(exc)

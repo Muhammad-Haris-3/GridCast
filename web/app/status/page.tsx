@@ -44,6 +44,17 @@ export default async function StatusPage() {
 
   const dbOk = status.database === "ok";
 
+  // Who produced this payload. The pipeline builds the snapshot from a CI
+  // runner: it can see the warehouse, and cannot see the serving container's
+  // environment or database role. Reporting its own instead is what put
+  // "Environment: local" and "Read-only serving role: NOT CONFIGURED" on this
+  // page for two weeks, describing an API that had both set correctly.
+  //
+  // Anything other than "serving" counts as not self-reported, including an
+  // older snapshot that carries no reporter at all. That errs towards omitting
+  // a row rather than printing a misconfiguration nobody has.
+  const selfReported = status.reported_by === "serving";
+
   return (
     <>
       <span className="kicker">Operations</span>
@@ -58,10 +69,12 @@ export default async function StatusPage() {
         <section className="card">
           <h2 style={{ marginTop: 0 }}>Service</h2>
           <dl style={{ margin: 0 }}>
-            <div className="kv">
-              <dt>Environment</dt>
-              <dd>{status.env}</dd>
-            </div>
+            {selfReported && (
+              <div className="kv">
+                <dt>Environment</dt>
+                <dd>{status.env}</dd>
+              </div>
+            )}
             <div className="kv">
               <dt>Build</dt>
               <dd>
@@ -74,15 +87,24 @@ export default async function StatusPage() {
                 <span className={dbOk ? "pill ok" : "pill bad"}>{status.database}</span>
               </dd>
             </div>
-            <div className="kv">
-              <dt>Read-only serving role</dt>
-              <dd>
-                <span className={status.readonly_role_in_use ? "pill ok" : "pill warn"}>
-                  {status.readonly_role_in_use ? "in use" : "not configured"}
-                </span>
-              </dd>
-            </div>
+            {selfReported && (
+              <div className="kv">
+                <dt>Read-only serving role</dt>
+                <dd>
+                  <span className={status.readonly_role_in_use ? "pill ok" : "pill warn"}>
+                    {status.readonly_role_in_use ? "in use" : "not configured"}
+                  </span>
+                </dd>
+              </div>
+            )}
           </dl>
+          {!selfReported && (
+            <p style={{ color: "var(--faint)", fontSize: 12.5, margin: "18px 0 0" }}>
+              Environment and serving role are omitted rather than guessed. This payload was built
+              by the pipeline, which can see the warehouse but not the API&rsquo;s own
+              configuration; both appear when the API answers for itself.
+            </p>
+          )}
         </section>
 
         <section className="card">
