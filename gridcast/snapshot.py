@@ -127,7 +127,34 @@ def envelope(name: str, payload: dict[str, Any], captured_at: datetime) -> dict[
 
 
 def write(path: Path, document: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
+# Vercel's opt-out, on the branch it is about.
+#
+# web/vercel.json on main has said `git.deploymentEnabled: {"snapshots": false}`
+# since 2026-08-20 and has never once taken effect. Vercel reads that file from
+# the commit it is DEPLOYING, at the project's configured Root Directory, which
+# is "web" here. This branch is an orphan commit carrying derived JSON and
+# nothing else, so the file is missing exactly where it would be read, and every
+# push has failed in one second on "Root Directory web does not exist" — 48 red
+# marks a day for a branch that was never meant to be built.
+#
+# A setting that lives on one branch cannot govern another. Writing it into the
+# published tree puts the declaration where the deployment looks for it, and
+# incidentally makes the root directory exist, so the check that fails first no
+# longer has anything to fail on.
+#
+# Named rather than blanket. `deploymentEnabled: false` would read more simply
+# and would disable every branch if this copy were ever consulted more widely
+# than the deployment it belongs to. Naming the branch means the worst case is
+# that it does nothing.
+VERCEL_OPT_OUT_PATH = Path("web") / "vercel.json"
+VERCEL_OPT_OUT: dict[str, Any] = {
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "git": {"deploymentEnabled": {"snapshots": False}},
+}
 
 
 def build(out_dir: Path) -> int:
@@ -202,6 +229,11 @@ def build(out_dir: Path) -> int:
             ),
         },
     )
+
+    # Not a payload, so not in the manifest: nothing reads it, and telling the
+    # frontend a snapshot exists that carries no data would be a lie in the one
+    # file it consults to find out what is here.
+    write(out_dir / VERCEL_OPT_OUT_PATH, VERCEL_OPT_OUT)
 
     return len(failures)
 

@@ -114,8 +114,13 @@ jobs:
       # This branch carries data, not a site. Vercel deploys every branch it is
       # given, so each of these 48 daily pushes queued a build that failed on
       # "Root Directory web does not exist" — a red mark every half hour for a
-      # branch that was never meant to be built. web/vercel.json turns
-      # deployments off for it by name.
+      # branch that was never meant to be built.
+      #
+      # The opt-out committed to web/vercel.json on main did not stop it, and
+      # could not: Vercel reads that file from the commit it is deploying, at
+      # the project Root Directory, and this branch had no web/ directory to
+      # read it from. gridcast.snapshot now writes the same declaration into
+      # the published tree, so the branch carries its own.
       - name: Publish snapshots
         if: always()
         env:
