@@ -20,6 +20,14 @@
 
     A VIEW, not a table: the register is small, the aggregate is cheap, and a
     stored copy could go stale against the evidence it claims to summarise.
+
+    SCORES FROM A DEGRADED CONFIGURATION ARE EXCLUDED. A model that issued
+    without the inputs it was built on is not the model this row claims to
+    measure, and because the aggregate groups over the whole register those
+    points would otherwise be pooled with valid ones the moment the model
+    resumed. The windows are declared in the degraded_windows macro and the
+    excluded points are published, with their count and the reason, by
+    mart_excluded_scores. Nothing is removed from the register itself.
 */
 
 with scored as (
@@ -40,6 +48,13 @@ with scored as (
     from {{ source('register', 'reg_forecast_point') }} f
     join {{ source('register', 'reg_forecast_score') }} s
       on s.forecast_id = f.forecast_id
+    where not exists (
+        select 1
+        from ({{ degraded_windows() }}) d
+        where d.model_version = f.model_version
+          and f.run_at_utc >= d.from_utc
+          and f.run_at_utc <  d.until_utc
+    )
 
 ),
 
@@ -47,8 +62,20 @@ models_issuing as (
 
     -- How many distinct models forecast at each issue time. A target is
     -- comparable only when every one of them covered it.
+    --
+    -- The exclusion is repeated here and is not optional. Counting a degraded
+    -- model as a participant would make every target it forecast uncomparable
+    -- for everybody else, quietly deleting three days of valid B0, B1 and ESO
+    -- points along with the invalid G2 ones.
     select run_at_utc, count(distinct model_version) as models_at_issue
-    from {{ source('register', 'reg_forecast_point') }}
+    from {{ source('register', 'reg_forecast_point') }} f
+    where not exists (
+        select 1
+        from ({{ degraded_windows() }}) d
+        where d.model_version = f.model_version
+          and f.run_at_utc >= d.from_utc
+          and f.run_at_utc <  d.until_utc
+    )
     group by run_at_utc
 
 ),

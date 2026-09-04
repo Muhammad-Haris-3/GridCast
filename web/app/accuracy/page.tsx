@@ -1,4 +1,10 @@
-import { API_BASE, normaliseRow, unavailableReason, type WireAccuracyRow } from "@/lib/api";
+import {
+  API_BASE,
+  normaliseRow,
+  unavailableReason,
+  type ExcludedScores,
+  type WireAccuracyRow,
+} from "@/lib/api";
 import { load } from "@/lib/snapshot";
 import DataAge from "../DataAge";
 import Scoreboard from "./Scoreboard";
@@ -13,6 +19,10 @@ type Accuracy = {
   any_publishable: boolean;
   rows: WireAccuracyRow[];
   note: string;
+  /** Absent on payloads published before 2026-09-04, and null when the build
+   *  could not read the exclusion accounting — neither is the same as "nothing
+   *  was excluded", which is an empty array. */
+  excluded?: ExcludedScores[] | null;
 };
 
 type Integrity = {
@@ -153,6 +163,37 @@ export default async function AccuracyPage() {
           note={accuracy.note}
         />
       )}
+
+      {accuracy.excluded && accuracy.excluded.length > 0 ? (
+        <div className="card caution" style={{ marginTop: 26 }}>
+          <span className="pill warn">excluded from the figures above</span>
+          <p style={{ marginTop: 18 }}>
+            These forecasts were issued, scored, and are permanently in the register — the
+            record of what was published cannot be edited and has not been. They are left out
+            of the accuracy figures because the model was running in a configuration it was not
+            built for, so scoring them measures something that no longer exists. Pooling them
+            with valid scores would produce a number describing neither.
+          </p>
+          <ul className="notes">
+            {accuracy.excluded.map((e) => (
+              <li key={e.model_version}>
+                <code>{e.model_version}</code> &mdash;{" "}
+                {/* Number() rather than trusting the type: the numeric columns on this
+                    page arrive from Postgres as JSON strings, and calling a Number method
+                    on one failed every production build for two weeks. */}
+                <strong>{Number(e.n_excluded).toLocaleString("en-GB")}</strong> scored
+                forecasts issued between {e.first_issued.slice(0, 10)} and{" "}
+                {e.last_issued.slice(0, 10)}, {e.reason}.
+              </li>
+            ))}
+          </ul>
+          <p style={{ color: "var(--faint)", fontSize: 12.5, margin: "16px 0 0" }}>
+            A model whose every scored point is excluded does not appear in the table above at
+            all. It has no live measurement yet — which is a different statement from having a
+            poor one, and the two must not look alike.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid">
         <div className="card">

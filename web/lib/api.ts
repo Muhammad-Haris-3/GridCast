@@ -118,6 +118,22 @@ export function normaliseRow(row: WireAccuracyRow): AccuracyRow {
   };
 }
 
+/** Scored forecasts deliberately left out of the published accuracy figures.
+ *
+ * A model that issued in a configuration it was not built for is not the model
+ * the scoreboard claims to measure, and pooling those scores with valid ones
+ * produces a number describing neither. The warehouse excludes them; this is
+ * how the page can say so. An exclusion nobody can see is an edit. */
+export type ExcludedScores = {
+  model_version: string;
+  reason: string;
+  n_excluded: number;
+  first_issued: string;
+  last_issued: string;
+  first_target: string;
+  last_target: string;
+};
+
 export type SystemStatus = {
   /** Which process produced this payload.
    *
