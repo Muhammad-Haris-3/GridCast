@@ -1,7 +1,7 @@
-import { API_BASE, unavailableReason } from "@/lib/api";
+import { API_BASE, normaliseRow, unavailableReason, type WireAccuracyRow } from "@/lib/api";
 import { load } from "@/lib/snapshot";
 import DataAge from "../DataAge";
-import Scoreboard, { type AccuracyRow } from "./Scoreboard";
+import Scoreboard from "./Scoreboard";
 
 // Accuracy changes only as forecasts mature and are scored, hours behind the
 // clock. There is nothing to gain from rendering it per visitor.
@@ -11,7 +11,7 @@ type Accuracy = {
   min_publishable_n: number;
   total_scored_points: number;
   any_publishable: boolean;
-  rows: AccuracyRow[];
+  rows: WireAccuracyRow[];
   note: string;
 };
 
@@ -148,7 +148,7 @@ export default async function AccuracyPage() {
         </div>
       ) : (
         <Scoreboard
-          rows={accuracy.rows}
+          rows={accuracy.rows.map(normaliseRow)}
           minPublishableN={accuracy.min_publishable_n}
           note={accuracy.note}
         />

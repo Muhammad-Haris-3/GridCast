@@ -44,6 +44,80 @@ export type TransferBudget = {
   estimate_note: string;
 } | null;
 
+/** A numeric column, as it actually arrives over the wire.
+ *
+ * Postgres `numeric` becomes a Python Decimal, and a Decimal is serialised to
+ * JSON as a STRING to preserve its precision: the accuracy payload really
+ * contains `"mae": "21.577"`, quoted. Declaring these as `number` was a lie
+ * that TypeScript could not catch, because the lie was on the far side of a
+ * `fetch`.
+ *
+ * It survived three weeks because JavaScript coerces silently in arithmetic
+ * and comparison — `mase < 1` and `value * 100` are correct with a string on
+ * the left — and every route through this file that would not coerce was
+ * unreachable while no horizon group had 200 scored points. When the first one
+ * crossed the threshold on 2026-09-04, `r.mae?.toFixed(2)` finally ran,
+ * `.toFixed` is a method on Number and not on String, and /accuracy is
+ * prerendered at build time. So a data threshold being crossed failed the
+ * production build, and the site stopped deploying at all.
+ *
+ * Typed as the union it really is, so that calling a Number method on one is a
+ * compile error rather than a deploy failure. Nothing may use these directly:
+ * `normaliseRow` is the only way in. */
+type Numeric = number | string | null;
+
+/** The accuracy payload exactly as the API and the snapshots publish it. */
+export type WireAccuracyRow = {
+  model_version: string;
+  horizon_group: string;
+  n: number;
+  mae: Numeric;
+  rmse: Numeric;
+  mase: Numeric;
+  coverage_80: Numeric;
+  interval_width_80: Numeric;
+  publishable: boolean;
+};
+
+/** The same row after the boundary, with real numbers. What this file renders. */
+export type AccuracyRow = {
+  model_version: string;
+  horizon_group: string;
+  n: number;
+  mae: number | null;
+  rmse: number | null;
+  mase: number | null;
+  coverage_80: number | null;
+  interval_width_80: number | null;
+  publishable: boolean;
+};
+
+function num(value: Numeric): number | null {
+  if (value == null) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  // NaN rather than a crash is the wrong trade here: a figure that cannot be
+  // parsed is a figure this page must not print, and null already means "not
+  // publishable" everywhere below.
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Convert one wire row at the boundary, once.
+ *
+ * Once rather than at each use: the bug this fixes was not that a conversion
+ * was wrong, it was that six call sites each decided for themselves whether
+ * one was needed, and five of them happened to be right.
+ */
+export function normaliseRow(row: WireAccuracyRow): AccuracyRow {
+  return {
+    ...row,
+    mae: num(row.mae),
+    rmse: num(row.rmse),
+    mase: num(row.mase),
+    coverage_80: num(row.coverage_80),
+    interval_width_80: num(row.interval_width_80),
+  };
+}
+
 export type SystemStatus = {
   /** Which process produced this payload.
    *

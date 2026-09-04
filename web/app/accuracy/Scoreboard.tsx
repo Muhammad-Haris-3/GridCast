@@ -2,17 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-export type AccuracyRow = {
-  model_version: string;
-  horizon_group: string;
-  n: number;
-  mae: number | null;
-  rmse: number | null;
-  mase: number | null;
-  coverage_80: number | null;
-  interval_width_80: number | null;
-  publishable: boolean;
-};
+import type { AccuracyRow } from "@/lib/api";
 
 const HORIZON_LABEL: Record<string, string> = {
   H1: "0–3 h",
