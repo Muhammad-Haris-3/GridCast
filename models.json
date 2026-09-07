@@ -1,0 +1,50 @@
+{
+  "snapshot": {
+    "name": "models",
+    "captured_at_utc": "2026-09-07T00:47:51.410183+00:00",
+    "commit": "79e33b3a5f4d2803ca4a54d68102875682b4bc75",
+    "params": null
+  },
+  "payload": {
+    "models": [
+      {
+        "model_version": "B0_persistence_v1",
+        "model_family": "persistence",
+        "role": "challenger",
+        "role_since_utc": "2026-08-12T19:25:03.300433+00:00",
+        "uses_eso_forecast": false,
+        "created_at_utc": "2026-08-12T19:25:03.300433+00:00",
+        "notes": "Reference baseline. Establishes that a model has learned anything at all."
+      },
+      {
+        "model_version": "ESO_published",
+        "model_family": "external_benchmark",
+        "role": "challenger",
+        "role_since_utc": "2026-08-12T19:25:03.300433+00:00",
+        "uses_eso_forecast": false,
+        "created_at_utc": "2026-08-12T19:25:03.300433+00:00",
+        "notes": "National Grid ESO's published forecast, recorded at the horizon we received it. Not built here and not competing \u2014 it is the benchmark, and this is the only place it can be compared like for like."
+      },
+      {
+        "model_version": "G2_gbm_v1",
+        "model_family": "hist_gradient_boosting",
+        "role": "challenger",
+        "role_since_utc": "2026-08-12T20:42:24.527300+00:00",
+        "uses_eso_forecast": false,
+        "created_at_utc": "2026-08-12T20:42:24.527300+00:00",
+        "notes": "Gradient boosting on 39 point-in-time features, no ESO input - the fair competitor. Out-of-sample MASE 0.46 to 0.55 against a best baseline of 1.03 to 1.38. Issued as a challenger; promotion is decided only by the pre-registered rule."
+      },
+      {
+        "model_version": "B1_seasonal_naive_q_v1",
+        "model_family": "seasonal_naive",
+        "role": "champion",
+        "role_since_utc": "2026-08-12T19:22:52.837978+00:00",
+        "uses_eso_forecast": false,
+        "created_at_utc": "2026-08-12T19:22:52.837978+00:00",
+        "notes": "M5 opening champion. A baseline on purpose: the milestone's deliverable is the loop, and a model whose behaviour is fully understood makes the first live scores interpretable."
+      }
+    ],
+    "promotions": [],
+    "note": "Every promotion evaluation is recorded, including those that did not promote. A registry holding only successful promotions is evidence that failures went unrecorded, not that none occurred."
+  }
+}

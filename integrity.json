@@ -1,0 +1,63 @@
+{
+  "snapshot": {
+    "name": "integrity",
+    "captured_at_utc": "2026-09-07T00:47:51.410183+00:00",
+    "commit": "79e33b3a5f4d2803ca4a54d68102875682b4bc75",
+    "params": null
+  },
+  "payload": {
+    "serving_host": "ep-sweet-unit-ay0ookfd-pooler.c-5.us-east-2.aws.neon.tech/neondb",
+    "register": {
+      "forecasts": 35160,
+      "models": 4,
+      "first_issued": "2026-08-12T19:22:49.564801+00:00",
+      "last_issued": "2026-09-07T00:47:17.738260+00:00"
+    },
+    "scored": 19538,
+    "seals": [
+      {
+        "period_month": "2026-08-01",
+        "row_count": 23549,
+        "sealed_at_utc": "2026-09-02T08:18:16.869624+00:00"
+      }
+    ],
+    "recent_audits": [
+      {
+        "checked_at_utc": "2026-09-06T08:17:16.966311+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-09-05T07:58:55.144331+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-09-04T08:23:47.989976+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-09-03T08:27:50.822764+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-09-02T08:18:17.365883+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      }
+    ],
+    "guarantee": "The application role holds INSERT on the forecast register and has no UPDATE or DELETE. Closed months are hashed and the hash is committed to git, so the live database can be checked against a public history."
+  }
+}

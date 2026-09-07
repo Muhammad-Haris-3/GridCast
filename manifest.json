@@ -1,0 +1,29 @@
+{
+  "captured_at_utc": "2026-09-07T00:47:51.410183+00:00",
+  "commit": "79e33b3a5f4d2803ca4a54d68102875682b4bc75",
+  "files": {
+    "status": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "forecast_current": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "accuracy": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "leaderboard": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "models": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "integrity": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    },
+    "plan": {
+      "captured_at_utc": "2026-09-07T00:47:51.410183+00:00"
+    }
+  },
+  "failed": {},
+  "note": "Derived cache of the serving payloads, rebuilt every pipeline run. The forecast register and the monthly seals are the record; this is not."
+}
