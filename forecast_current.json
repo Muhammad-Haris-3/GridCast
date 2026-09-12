@@ -1,0 +1,878 @@
+{
+  "snapshot": {
+    "name": "forecast_current",
+    "captured_at_utc": "2026-09-12T22:01:45.665135+00:00",
+    "commit": "79e33b3a5f4d2803ca4a54d68102875682b4bc75",
+    "params": null
+  },
+  "payload": {
+    "model_version": "B1_seasonal_naive_q_v1",
+    "run_at_utc": "2026-09-12T22:01:22.999798+00:00",
+    "horizons": [
+      {
+        "horizon_periods": 1,
+        "target_sp_start_utc": "2026-09-12T22:30:00+00:00",
+        "point_gco2_kwh": 77.0,
+        "q10_gco2_kwh": 11.0,
+        "q90_gco2_kwh": 143.0,
+        "q025_gco2_kwh": -30.0,
+        "q975_gco2_kwh": 180.0
+      },
+      {
+        "horizon_periods": 2,
+        "target_sp_start_utc": "2026-09-12T23:00:00+00:00",
+        "point_gco2_kwh": 78.0,
+        "q10_gco2_kwh": 12.0,
+        "q90_gco2_kwh": 144.0,
+        "q025_gco2_kwh": -29.0,
+        "q975_gco2_kwh": 181.0
+      },
+      {
+        "horizon_periods": 3,
+        "target_sp_start_utc": "2026-09-12T23:30:00+00:00",
+        "point_gco2_kwh": 73.0,
+        "q10_gco2_kwh": 7.0,
+        "q90_gco2_kwh": 139.0,
+        "q025_gco2_kwh": -34.0,
+        "q975_gco2_kwh": 176.0
+      },
+      {
+        "horizon_periods": 4,
+        "target_sp_start_utc": "2026-09-13T00:00:00+00:00",
+        "point_gco2_kwh": 77.0,
+        "q10_gco2_kwh": 11.0,
+        "q90_gco2_kwh": 143.0,
+        "q025_gco2_kwh": -30.0,
+        "q975_gco2_kwh": 180.0
+      },
+      {
+        "horizon_periods": 5,
+        "target_sp_start_utc": "2026-09-13T00:30:00+00:00",
+        "point_gco2_kwh": 73.0,
+        "q10_gco2_kwh": 7.0,
+        "q90_gco2_kwh": 139.0,
+        "q025_gco2_kwh": -34.0,
+        "q975_gco2_kwh": 176.0
+      },
+      {
+        "horizon_periods": 6,
+        "target_sp_start_utc": "2026-09-13T01:00:00+00:00",
+        "point_gco2_kwh": 72.0,
+        "q10_gco2_kwh": 6.0,
+        "q90_gco2_kwh": 138.0,
+        "q025_gco2_kwh": -35.0,
+        "q975_gco2_kwh": 175.0
+      },
+      {
+        "horizon_periods": 7,
+        "target_sp_start_utc": "2026-09-13T01:30:00+00:00",
+        "point_gco2_kwh": 74.0,
+        "q10_gco2_kwh": 8.0,
+        "q90_gco2_kwh": 140.0,
+        "q025_gco2_kwh": -33.0,
+        "q975_gco2_kwh": 177.0
+      },
+      {
+        "horizon_periods": 8,
+        "target_sp_start_utc": "2026-09-13T02:00:00+00:00",
+        "point_gco2_kwh": 75.0,
+        "q10_gco2_kwh": 9.0,
+        "q90_gco2_kwh": 141.0,
+        "q025_gco2_kwh": -32.0,
+        "q975_gco2_kwh": 178.0
+      },
+      {
+        "horizon_periods": 9,
+        "target_sp_start_utc": "2026-09-13T02:30:00+00:00",
+        "point_gco2_kwh": 80.0,
+        "q10_gco2_kwh": 14.0,
+        "q90_gco2_kwh": 146.0,
+        "q025_gco2_kwh": -27.0,
+        "q975_gco2_kwh": 183.0
+      },
+      {
+        "horizon_periods": 10,
+        "target_sp_start_utc": "2026-09-13T03:00:00+00:00",
+        "point_gco2_kwh": 86.0,
+        "q10_gco2_kwh": 20.0,
+        "q90_gco2_kwh": 152.0,
+        "q025_gco2_kwh": -21.0,
+        "q975_gco2_kwh": 189.0
+      },
+      {
+        "horizon_periods": 11,
+        "target_sp_start_utc": "2026-09-13T03:30:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 35.0,
+        "q90_gco2_kwh": 167.0,
+        "q025_gco2_kwh": -6.0,
+        "q975_gco2_kwh": 204.0
+      },
+      {
+        "horizon_periods": 12,
+        "target_sp_start_utc": "2026-09-13T04:00:00+00:00",
+        "point_gco2_kwh": 112.0,
+        "q10_gco2_kwh": 46.0,
+        "q90_gco2_kwh": 178.0,
+        "q025_gco2_kwh": 5.0,
+        "q975_gco2_kwh": 215.0
+      },
+      {
+        "horizon_periods": 13,
+        "target_sp_start_utc": "2026-09-13T04:30:00+00:00",
+        "point_gco2_kwh": 127.0,
+        "q10_gco2_kwh": 61.0,
+        "q90_gco2_kwh": 193.0,
+        "q025_gco2_kwh": 20.0,
+        "q975_gco2_kwh": 230.0
+      },
+      {
+        "horizon_periods": 14,
+        "target_sp_start_utc": "2026-09-13T05:00:00+00:00",
+        "point_gco2_kwh": 139.0,
+        "q10_gco2_kwh": 73.0,
+        "q90_gco2_kwh": 205.0,
+        "q025_gco2_kwh": 32.0,
+        "q975_gco2_kwh": 242.0
+      },
+      {
+        "horizon_periods": 15,
+        "target_sp_start_utc": "2026-09-13T05:30:00+00:00",
+        "point_gco2_kwh": 130.0,
+        "q10_gco2_kwh": 64.0,
+        "q90_gco2_kwh": 196.0,
+        "q025_gco2_kwh": 23.0,
+        "q975_gco2_kwh": 233.0
+      },
+      {
+        "horizon_periods": 16,
+        "target_sp_start_utc": "2026-09-13T06:00:00+00:00",
+        "point_gco2_kwh": 136.0,
+        "q10_gco2_kwh": 70.0,
+        "q90_gco2_kwh": 202.0,
+        "q025_gco2_kwh": 29.0,
+        "q975_gco2_kwh": 239.0
+      },
+      {
+        "horizon_periods": 17,
+        "target_sp_start_utc": "2026-09-13T06:30:00+00:00",
+        "point_gco2_kwh": 123.0,
+        "q10_gco2_kwh": 57.0,
+        "q90_gco2_kwh": 189.0,
+        "q025_gco2_kwh": 16.0,
+        "q975_gco2_kwh": 226.0
+      },
+      {
+        "horizon_periods": 18,
+        "target_sp_start_utc": "2026-09-13T07:00:00+00:00",
+        "point_gco2_kwh": 119.0,
+        "q10_gco2_kwh": 53.0,
+        "q90_gco2_kwh": 185.0,
+        "q025_gco2_kwh": 12.0,
+        "q975_gco2_kwh": 222.0
+      },
+      {
+        "horizon_periods": 19,
+        "target_sp_start_utc": "2026-09-13T07:30:00+00:00",
+        "point_gco2_kwh": 112.0,
+        "q10_gco2_kwh": 46.0,
+        "q90_gco2_kwh": 178.0,
+        "q025_gco2_kwh": 5.0,
+        "q975_gco2_kwh": 215.0
+      },
+      {
+        "horizon_periods": 20,
+        "target_sp_start_utc": "2026-09-13T08:00:00+00:00",
+        "point_gco2_kwh": 102.0,
+        "q10_gco2_kwh": 36.0,
+        "q90_gco2_kwh": 168.0,
+        "q025_gco2_kwh": -5.0,
+        "q975_gco2_kwh": 205.0
+      },
+      {
+        "horizon_periods": 21,
+        "target_sp_start_utc": "2026-09-13T08:30:00+00:00",
+        "point_gco2_kwh": 97.0,
+        "q10_gco2_kwh": 31.0,
+        "q90_gco2_kwh": 163.0,
+        "q025_gco2_kwh": -10.0,
+        "q975_gco2_kwh": 200.0
+      },
+      {
+        "horizon_periods": 22,
+        "target_sp_start_utc": "2026-09-13T09:00:00+00:00",
+        "point_gco2_kwh": 95.0,
+        "q10_gco2_kwh": 29.0,
+        "q90_gco2_kwh": 161.0,
+        "q025_gco2_kwh": -12.0,
+        "q975_gco2_kwh": 198.0
+      },
+      {
+        "horizon_periods": 23,
+        "target_sp_start_utc": "2026-09-13T09:30:00+00:00",
+        "point_gco2_kwh": 95.0,
+        "q10_gco2_kwh": 29.0,
+        "q90_gco2_kwh": 161.0,
+        "q025_gco2_kwh": -12.0,
+        "q975_gco2_kwh": 198.0
+      },
+      {
+        "horizon_periods": 24,
+        "target_sp_start_utc": "2026-09-13T10:00:00+00:00",
+        "point_gco2_kwh": 98.0,
+        "q10_gco2_kwh": 32.0,
+        "q90_gco2_kwh": 164.0,
+        "q025_gco2_kwh": -9.0,
+        "q975_gco2_kwh": 201.0
+      },
+      {
+        "horizon_periods": 25,
+        "target_sp_start_utc": "2026-09-13T10:30:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 35.0,
+        "q90_gco2_kwh": 167.0,
+        "q025_gco2_kwh": -6.0,
+        "q975_gco2_kwh": 204.0
+      },
+      {
+        "horizon_periods": 26,
+        "target_sp_start_utc": "2026-09-13T11:00:00+00:00",
+        "point_gco2_kwh": 104.0,
+        "q10_gco2_kwh": 38.0,
+        "q90_gco2_kwh": 170.0,
+        "q025_gco2_kwh": -3.0,
+        "q975_gco2_kwh": 207.0
+      },
+      {
+        "horizon_periods": 27,
+        "target_sp_start_utc": "2026-09-13T11:30:00+00:00",
+        "point_gco2_kwh": 105.0,
+        "q10_gco2_kwh": 39.0,
+        "q90_gco2_kwh": 171.0,
+        "q025_gco2_kwh": -2.0,
+        "q975_gco2_kwh": 208.0
+      },
+      {
+        "horizon_periods": 28,
+        "target_sp_start_utc": "2026-09-13T12:00:00+00:00",
+        "point_gco2_kwh": 105.0,
+        "q10_gco2_kwh": 39.0,
+        "q90_gco2_kwh": 171.0,
+        "q025_gco2_kwh": -2.0,
+        "q975_gco2_kwh": 208.0
+      },
+      {
+        "horizon_periods": 29,
+        "target_sp_start_utc": "2026-09-13T12:30:00+00:00",
+        "point_gco2_kwh": 108.0,
+        "q10_gco2_kwh": 42.0,
+        "q90_gco2_kwh": 174.0,
+        "q025_gco2_kwh": 1.0,
+        "q975_gco2_kwh": 211.0
+      },
+      {
+        "horizon_periods": 30,
+        "target_sp_start_utc": "2026-09-13T13:00:00+00:00",
+        "point_gco2_kwh": 114.0,
+        "q10_gco2_kwh": 48.0,
+        "q90_gco2_kwh": 180.0,
+        "q025_gco2_kwh": 7.0,
+        "q975_gco2_kwh": 217.0
+      },
+      {
+        "horizon_periods": 31,
+        "target_sp_start_utc": "2026-09-13T13:30:00+00:00",
+        "point_gco2_kwh": 124.0,
+        "q10_gco2_kwh": 58.0,
+        "q90_gco2_kwh": 190.0,
+        "q025_gco2_kwh": 17.0,
+        "q975_gco2_kwh": 227.0
+      },
+      {
+        "horizon_periods": 32,
+        "target_sp_start_utc": "2026-09-13T14:00:00+00:00",
+        "point_gco2_kwh": 70.0,
+        "q10_gco2_kwh": 4.0,
+        "q90_gco2_kwh": 136.0,
+        "q025_gco2_kwh": -37.0,
+        "q975_gco2_kwh": 173.0
+      },
+      {
+        "horizon_periods": 33,
+        "target_sp_start_utc": "2026-09-13T14:30:00+00:00",
+        "point_gco2_kwh": 85.0,
+        "q10_gco2_kwh": 19.0,
+        "q90_gco2_kwh": 151.0,
+        "q025_gco2_kwh": -22.0,
+        "q975_gco2_kwh": 188.0
+      },
+      {
+        "horizon_periods": 34,
+        "target_sp_start_utc": "2026-09-13T15:00:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 35.0,
+        "q90_gco2_kwh": 167.0,
+        "q025_gco2_kwh": -6.0,
+        "q975_gco2_kwh": 204.0
+      },
+      {
+        "horizon_periods": 35,
+        "target_sp_start_utc": "2026-09-13T15:30:00+00:00",
+        "point_gco2_kwh": 122.0,
+        "q10_gco2_kwh": 56.0,
+        "q90_gco2_kwh": 188.0,
+        "q025_gco2_kwh": 15.0,
+        "q975_gco2_kwh": 225.0
+      },
+      {
+        "horizon_periods": 36,
+        "target_sp_start_utc": "2026-09-13T16:00:00+00:00",
+        "point_gco2_kwh": 128.0,
+        "q10_gco2_kwh": 62.0,
+        "q90_gco2_kwh": 194.0,
+        "q025_gco2_kwh": 21.0,
+        "q975_gco2_kwh": 231.0
+      },
+      {
+        "horizon_periods": 37,
+        "target_sp_start_utc": "2026-09-13T16:30:00+00:00",
+        "point_gco2_kwh": 183.0,
+        "q10_gco2_kwh": 117.0,
+        "q90_gco2_kwh": 249.0,
+        "q025_gco2_kwh": 76.0,
+        "q975_gco2_kwh": 286.0
+      },
+      {
+        "horizon_periods": 38,
+        "target_sp_start_utc": "2026-09-13T17:00:00+00:00",
+        "point_gco2_kwh": 136.0,
+        "q10_gco2_kwh": 70.0,
+        "q90_gco2_kwh": 202.0,
+        "q025_gco2_kwh": 29.0,
+        "q975_gco2_kwh": 239.0
+      },
+      {
+        "horizon_periods": 39,
+        "target_sp_start_utc": "2026-09-13T17:30:00+00:00",
+        "point_gco2_kwh": 197.0,
+        "q10_gco2_kwh": 131.0,
+        "q90_gco2_kwh": 263.0,
+        "q025_gco2_kwh": 90.0,
+        "q975_gco2_kwh": 300.0
+      },
+      {
+        "horizon_periods": 40,
+        "target_sp_start_utc": "2026-09-13T18:00:00+00:00",
+        "point_gco2_kwh": 199.0,
+        "q10_gco2_kwh": 133.0,
+        "q90_gco2_kwh": 265.0,
+        "q025_gco2_kwh": 92.0,
+        "q975_gco2_kwh": 302.0
+      },
+      {
+        "horizon_periods": 41,
+        "target_sp_start_utc": "2026-09-13T18:30:00+00:00",
+        "point_gco2_kwh": 126.0,
+        "q10_gco2_kwh": 60.0,
+        "q90_gco2_kwh": 192.0,
+        "q025_gco2_kwh": 19.0,
+        "q975_gco2_kwh": 229.0
+      },
+      {
+        "horizon_periods": 42,
+        "target_sp_start_utc": "2026-09-13T19:00:00+00:00",
+        "point_gco2_kwh": 120.0,
+        "q10_gco2_kwh": 54.0,
+        "q90_gco2_kwh": 186.0,
+        "q025_gco2_kwh": 13.0,
+        "q975_gco2_kwh": 223.0
+      },
+      {
+        "horizon_periods": 43,
+        "target_sp_start_utc": "2026-09-13T19:30:00+00:00",
+        "point_gco2_kwh": 115.0,
+        "q10_gco2_kwh": 49.0,
+        "q90_gco2_kwh": 181.0,
+        "q025_gco2_kwh": 8.0,
+        "q975_gco2_kwh": 218.0
+      },
+      {
+        "horizon_periods": 44,
+        "target_sp_start_utc": "2026-09-13T20:00:00+00:00",
+        "point_gco2_kwh": 104.0,
+        "q10_gco2_kwh": 38.0,
+        "q90_gco2_kwh": 170.0,
+        "q025_gco2_kwh": -3.0,
+        "q975_gco2_kwh": 207.0
+      },
+      {
+        "horizon_periods": 45,
+        "target_sp_start_utc": "2026-09-13T20:30:00+00:00",
+        "point_gco2_kwh": 102.0,
+        "q10_gco2_kwh": 36.0,
+        "q90_gco2_kwh": 168.0,
+        "q025_gco2_kwh": -5.0,
+        "q975_gco2_kwh": 205.0
+      },
+      {
+        "horizon_periods": 46,
+        "target_sp_start_utc": "2026-09-13T21:00:00+00:00",
+        "point_gco2_kwh": 93.0,
+        "q10_gco2_kwh": 27.0,
+        "q90_gco2_kwh": 159.0,
+        "q025_gco2_kwh": -14.0,
+        "q975_gco2_kwh": 196.0
+      },
+      {
+        "horizon_periods": 47,
+        "target_sp_start_utc": "2026-09-13T21:30:00+00:00",
+        "point_gco2_kwh": 178.0,
+        "q10_gco2_kwh": 112.0,
+        "q90_gco2_kwh": 244.0,
+        "q025_gco2_kwh": 71.0,
+        "q975_gco2_kwh": 281.0
+      },
+      {
+        "horizon_periods": 48,
+        "target_sp_start_utc": "2026-09-13T22:00:00+00:00",
+        "point_gco2_kwh": 164.0,
+        "q10_gco2_kwh": 98.0,
+        "q90_gco2_kwh": 230.0,
+        "q025_gco2_kwh": 57.0,
+        "q975_gco2_kwh": 267.0
+      },
+      {
+        "horizon_periods": 49,
+        "target_sp_start_utc": "2026-09-13T22:30:00+00:00",
+        "point_gco2_kwh": 77.0,
+        "q10_gco2_kwh": -3.0,
+        "q90_gco2_kwh": 155.0,
+        "q025_gco2_kwh": -49.0,
+        "q975_gco2_kwh": 198.0
+      },
+      {
+        "horizon_periods": 50,
+        "target_sp_start_utc": "2026-09-13T23:00:00+00:00",
+        "point_gco2_kwh": 78.0,
+        "q10_gco2_kwh": -2.0,
+        "q90_gco2_kwh": 156.0,
+        "q025_gco2_kwh": -48.0,
+        "q975_gco2_kwh": 199.0
+      },
+      {
+        "horizon_periods": 51,
+        "target_sp_start_utc": "2026-09-13T23:30:00+00:00",
+        "point_gco2_kwh": 73.0,
+        "q10_gco2_kwh": -7.0,
+        "q90_gco2_kwh": 151.0,
+        "q025_gco2_kwh": -53.0,
+        "q975_gco2_kwh": 194.0
+      },
+      {
+        "horizon_periods": 52,
+        "target_sp_start_utc": "2026-09-14T00:00:00+00:00",
+        "point_gco2_kwh": 77.0,
+        "q10_gco2_kwh": -3.0,
+        "q90_gco2_kwh": 155.0,
+        "q025_gco2_kwh": -49.0,
+        "q975_gco2_kwh": 198.0
+      },
+      {
+        "horizon_periods": 53,
+        "target_sp_start_utc": "2026-09-14T00:30:00+00:00",
+        "point_gco2_kwh": 73.0,
+        "q10_gco2_kwh": -7.0,
+        "q90_gco2_kwh": 151.0,
+        "q025_gco2_kwh": -53.0,
+        "q975_gco2_kwh": 194.0
+      },
+      {
+        "horizon_periods": 54,
+        "target_sp_start_utc": "2026-09-14T01:00:00+00:00",
+        "point_gco2_kwh": 72.0,
+        "q10_gco2_kwh": -8.0,
+        "q90_gco2_kwh": 150.0,
+        "q025_gco2_kwh": -54.0,
+        "q975_gco2_kwh": 193.0
+      },
+      {
+        "horizon_periods": 55,
+        "target_sp_start_utc": "2026-09-14T01:30:00+00:00",
+        "point_gco2_kwh": 74.0,
+        "q10_gco2_kwh": -6.0,
+        "q90_gco2_kwh": 152.0,
+        "q025_gco2_kwh": -52.0,
+        "q975_gco2_kwh": 195.0
+      },
+      {
+        "horizon_periods": 56,
+        "target_sp_start_utc": "2026-09-14T02:00:00+00:00",
+        "point_gco2_kwh": 75.0,
+        "q10_gco2_kwh": -5.0,
+        "q90_gco2_kwh": 153.0,
+        "q025_gco2_kwh": -51.0,
+        "q975_gco2_kwh": 196.0
+      },
+      {
+        "horizon_periods": 57,
+        "target_sp_start_utc": "2026-09-14T02:30:00+00:00",
+        "point_gco2_kwh": 80.0,
+        "q10_gco2_kwh": 0.0,
+        "q90_gco2_kwh": 158.0,
+        "q025_gco2_kwh": -46.0,
+        "q975_gco2_kwh": 201.0
+      },
+      {
+        "horizon_periods": 58,
+        "target_sp_start_utc": "2026-09-14T03:00:00+00:00",
+        "point_gco2_kwh": 86.0,
+        "q10_gco2_kwh": 6.0,
+        "q90_gco2_kwh": 164.0,
+        "q025_gco2_kwh": -40.0,
+        "q975_gco2_kwh": 207.0
+      },
+      {
+        "horizon_periods": 59,
+        "target_sp_start_utc": "2026-09-14T03:30:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 21.0,
+        "q90_gco2_kwh": 179.0,
+        "q025_gco2_kwh": -25.0,
+        "q975_gco2_kwh": 222.0
+      },
+      {
+        "horizon_periods": 60,
+        "target_sp_start_utc": "2026-09-14T04:00:00+00:00",
+        "point_gco2_kwh": 112.0,
+        "q10_gco2_kwh": 32.0,
+        "q90_gco2_kwh": 190.0,
+        "q025_gco2_kwh": -14.0,
+        "q975_gco2_kwh": 233.0
+      },
+      {
+        "horizon_periods": 61,
+        "target_sp_start_utc": "2026-09-14T04:30:00+00:00",
+        "point_gco2_kwh": 127.0,
+        "q10_gco2_kwh": 47.0,
+        "q90_gco2_kwh": 205.0,
+        "q025_gco2_kwh": 1.0,
+        "q975_gco2_kwh": 248.0
+      },
+      {
+        "horizon_periods": 62,
+        "target_sp_start_utc": "2026-09-14T05:00:00+00:00",
+        "point_gco2_kwh": 139.0,
+        "q10_gco2_kwh": 59.0,
+        "q90_gco2_kwh": 217.0,
+        "q025_gco2_kwh": 13.0,
+        "q975_gco2_kwh": 260.0
+      },
+      {
+        "horizon_periods": 63,
+        "target_sp_start_utc": "2026-09-14T05:30:00+00:00",
+        "point_gco2_kwh": 130.0,
+        "q10_gco2_kwh": 50.0,
+        "q90_gco2_kwh": 208.0,
+        "q025_gco2_kwh": 4.0,
+        "q975_gco2_kwh": 251.0
+      },
+      {
+        "horizon_periods": 64,
+        "target_sp_start_utc": "2026-09-14T06:00:00+00:00",
+        "point_gco2_kwh": 136.0,
+        "q10_gco2_kwh": 56.0,
+        "q90_gco2_kwh": 214.0,
+        "q025_gco2_kwh": 10.0,
+        "q975_gco2_kwh": 257.0
+      },
+      {
+        "horizon_periods": 65,
+        "target_sp_start_utc": "2026-09-14T06:30:00+00:00",
+        "point_gco2_kwh": 123.0,
+        "q10_gco2_kwh": 43.0,
+        "q90_gco2_kwh": 201.0,
+        "q025_gco2_kwh": -3.0,
+        "q975_gco2_kwh": 244.0
+      },
+      {
+        "horizon_periods": 66,
+        "target_sp_start_utc": "2026-09-14T07:00:00+00:00",
+        "point_gco2_kwh": 119.0,
+        "q10_gco2_kwh": 39.0,
+        "q90_gco2_kwh": 197.0,
+        "q025_gco2_kwh": -7.0,
+        "q975_gco2_kwh": 240.0
+      },
+      {
+        "horizon_periods": 67,
+        "target_sp_start_utc": "2026-09-14T07:30:00+00:00",
+        "point_gco2_kwh": 112.0,
+        "q10_gco2_kwh": 32.0,
+        "q90_gco2_kwh": 190.0,
+        "q025_gco2_kwh": -14.0,
+        "q975_gco2_kwh": 233.0
+      },
+      {
+        "horizon_periods": 68,
+        "target_sp_start_utc": "2026-09-14T08:00:00+00:00",
+        "point_gco2_kwh": 102.0,
+        "q10_gco2_kwh": 22.0,
+        "q90_gco2_kwh": 180.0,
+        "q025_gco2_kwh": -24.0,
+        "q975_gco2_kwh": 223.0
+      },
+      {
+        "horizon_periods": 69,
+        "target_sp_start_utc": "2026-09-14T08:30:00+00:00",
+        "point_gco2_kwh": 97.0,
+        "q10_gco2_kwh": 17.0,
+        "q90_gco2_kwh": 175.0,
+        "q025_gco2_kwh": -29.0,
+        "q975_gco2_kwh": 218.0
+      },
+      {
+        "horizon_periods": 70,
+        "target_sp_start_utc": "2026-09-14T09:00:00+00:00",
+        "point_gco2_kwh": 95.0,
+        "q10_gco2_kwh": 15.0,
+        "q90_gco2_kwh": 173.0,
+        "q025_gco2_kwh": -31.0,
+        "q975_gco2_kwh": 216.0
+      },
+      {
+        "horizon_periods": 71,
+        "target_sp_start_utc": "2026-09-14T09:30:00+00:00",
+        "point_gco2_kwh": 95.0,
+        "q10_gco2_kwh": 15.0,
+        "q90_gco2_kwh": 173.0,
+        "q025_gco2_kwh": -31.0,
+        "q975_gco2_kwh": 216.0
+      },
+      {
+        "horizon_periods": 72,
+        "target_sp_start_utc": "2026-09-14T10:00:00+00:00",
+        "point_gco2_kwh": 98.0,
+        "q10_gco2_kwh": 18.0,
+        "q90_gco2_kwh": 176.0,
+        "q025_gco2_kwh": -28.0,
+        "q975_gco2_kwh": 219.0
+      },
+      {
+        "horizon_periods": 73,
+        "target_sp_start_utc": "2026-09-14T10:30:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 21.0,
+        "q90_gco2_kwh": 179.0,
+        "q025_gco2_kwh": -25.0,
+        "q975_gco2_kwh": 222.0
+      },
+      {
+        "horizon_periods": 74,
+        "target_sp_start_utc": "2026-09-14T11:00:00+00:00",
+        "point_gco2_kwh": 104.0,
+        "q10_gco2_kwh": 24.0,
+        "q90_gco2_kwh": 182.0,
+        "q025_gco2_kwh": -22.0,
+        "q975_gco2_kwh": 225.0
+      },
+      {
+        "horizon_periods": 75,
+        "target_sp_start_utc": "2026-09-14T11:30:00+00:00",
+        "point_gco2_kwh": 105.0,
+        "q10_gco2_kwh": 25.0,
+        "q90_gco2_kwh": 183.0,
+        "q025_gco2_kwh": -21.0,
+        "q975_gco2_kwh": 226.0
+      },
+      {
+        "horizon_periods": 76,
+        "target_sp_start_utc": "2026-09-14T12:00:00+00:00",
+        "point_gco2_kwh": 105.0,
+        "q10_gco2_kwh": 25.0,
+        "q90_gco2_kwh": 183.0,
+        "q025_gco2_kwh": -21.0,
+        "q975_gco2_kwh": 226.0
+      },
+      {
+        "horizon_periods": 77,
+        "target_sp_start_utc": "2026-09-14T12:30:00+00:00",
+        "point_gco2_kwh": 108.0,
+        "q10_gco2_kwh": 28.0,
+        "q90_gco2_kwh": 186.0,
+        "q025_gco2_kwh": -18.0,
+        "q975_gco2_kwh": 229.0
+      },
+      {
+        "horizon_periods": 78,
+        "target_sp_start_utc": "2026-09-14T13:00:00+00:00",
+        "point_gco2_kwh": 114.0,
+        "q10_gco2_kwh": 34.0,
+        "q90_gco2_kwh": 192.0,
+        "q025_gco2_kwh": -12.0,
+        "q975_gco2_kwh": 235.0
+      },
+      {
+        "horizon_periods": 79,
+        "target_sp_start_utc": "2026-09-14T13:30:00+00:00",
+        "point_gco2_kwh": 124.0,
+        "q10_gco2_kwh": 44.0,
+        "q90_gco2_kwh": 202.0,
+        "q025_gco2_kwh": -2.0,
+        "q975_gco2_kwh": 245.0
+      },
+      {
+        "horizon_periods": 80,
+        "target_sp_start_utc": "2026-09-14T14:00:00+00:00",
+        "point_gco2_kwh": 70.0,
+        "q10_gco2_kwh": -10.0,
+        "q90_gco2_kwh": 148.0,
+        "q025_gco2_kwh": -56.0,
+        "q975_gco2_kwh": 191.0
+      },
+      {
+        "horizon_periods": 81,
+        "target_sp_start_utc": "2026-09-14T14:30:00+00:00",
+        "point_gco2_kwh": 85.0,
+        "q10_gco2_kwh": 5.0,
+        "q90_gco2_kwh": 163.0,
+        "q025_gco2_kwh": -41.0,
+        "q975_gco2_kwh": 206.0
+      },
+      {
+        "horizon_periods": 82,
+        "target_sp_start_utc": "2026-09-14T15:00:00+00:00",
+        "point_gco2_kwh": 101.0,
+        "q10_gco2_kwh": 21.0,
+        "q90_gco2_kwh": 179.0,
+        "q025_gco2_kwh": -25.0,
+        "q975_gco2_kwh": 222.0
+      },
+      {
+        "horizon_periods": 83,
+        "target_sp_start_utc": "2026-09-14T15:30:00+00:00",
+        "point_gco2_kwh": 122.0,
+        "q10_gco2_kwh": 42.0,
+        "q90_gco2_kwh": 200.0,
+        "q025_gco2_kwh": -4.0,
+        "q975_gco2_kwh": 243.0
+      },
+      {
+        "horizon_periods": 84,
+        "target_sp_start_utc": "2026-09-14T16:00:00+00:00",
+        "point_gco2_kwh": 128.0,
+        "q10_gco2_kwh": 48.0,
+        "q90_gco2_kwh": 206.0,
+        "q025_gco2_kwh": 2.0,
+        "q975_gco2_kwh": 249.0
+      },
+      {
+        "horizon_periods": 85,
+        "target_sp_start_utc": "2026-09-14T16:30:00+00:00",
+        "point_gco2_kwh": 183.0,
+        "q10_gco2_kwh": 103.0,
+        "q90_gco2_kwh": 261.0,
+        "q025_gco2_kwh": 57.0,
+        "q975_gco2_kwh": 304.0
+      },
+      {
+        "horizon_periods": 86,
+        "target_sp_start_utc": "2026-09-14T17:00:00+00:00",
+        "point_gco2_kwh": 136.0,
+        "q10_gco2_kwh": 56.0,
+        "q90_gco2_kwh": 214.0,
+        "q025_gco2_kwh": 10.0,
+        "q975_gco2_kwh": 257.0
+      },
+      {
+        "horizon_periods": 87,
+        "target_sp_start_utc": "2026-09-14T17:30:00+00:00",
+        "point_gco2_kwh": 197.0,
+        "q10_gco2_kwh": 117.0,
+        "q90_gco2_kwh": 275.0,
+        "q025_gco2_kwh": 71.0,
+        "q975_gco2_kwh": 318.0
+      },
+      {
+        "horizon_periods": 88,
+        "target_sp_start_utc": "2026-09-14T18:00:00+00:00",
+        "point_gco2_kwh": 199.0,
+        "q10_gco2_kwh": 119.0,
+        "q90_gco2_kwh": 277.0,
+        "q025_gco2_kwh": 73.0,
+        "q975_gco2_kwh": 320.0
+      },
+      {
+        "horizon_periods": 89,
+        "target_sp_start_utc": "2026-09-14T18:30:00+00:00",
+        "point_gco2_kwh": 126.0,
+        "q10_gco2_kwh": 46.0,
+        "q90_gco2_kwh": 204.0,
+        "q025_gco2_kwh": 0.0,
+        "q975_gco2_kwh": 247.0
+      },
+      {
+        "horizon_periods": 90,
+        "target_sp_start_utc": "2026-09-14T19:00:00+00:00",
+        "point_gco2_kwh": 120.0,
+        "q10_gco2_kwh": 40.0,
+        "q90_gco2_kwh": 198.0,
+        "q025_gco2_kwh": -6.0,
+        "q975_gco2_kwh": 241.0
+      },
+      {
+        "horizon_periods": 91,
+        "target_sp_start_utc": "2026-09-14T19:30:00+00:00",
+        "point_gco2_kwh": 115.0,
+        "q10_gco2_kwh": 35.0,
+        "q90_gco2_kwh": 193.0,
+        "q025_gco2_kwh": -11.0,
+        "q975_gco2_kwh": 236.0
+      },
+      {
+        "horizon_periods": 92,
+        "target_sp_start_utc": "2026-09-14T20:00:00+00:00",
+        "point_gco2_kwh": 104.0,
+        "q10_gco2_kwh": 24.0,
+        "q90_gco2_kwh": 182.0,
+        "q025_gco2_kwh": -22.0,
+        "q975_gco2_kwh": 225.0
+      },
+      {
+        "horizon_periods": 93,
+        "target_sp_start_utc": "2026-09-14T20:30:00+00:00",
+        "point_gco2_kwh": 102.0,
+        "q10_gco2_kwh": 22.0,
+        "q90_gco2_kwh": 180.0,
+        "q025_gco2_kwh": -24.0,
+        "q975_gco2_kwh": 223.0
+      },
+      {
+        "horizon_periods": 94,
+        "target_sp_start_utc": "2026-09-14T21:00:00+00:00",
+        "point_gco2_kwh": 93.0,
+        "q10_gco2_kwh": 13.0,
+        "q90_gco2_kwh": 171.0,
+        "q025_gco2_kwh": -33.0,
+        "q975_gco2_kwh": 214.0
+      },
+      {
+        "horizon_periods": 95,
+        "target_sp_start_utc": "2026-09-14T21:30:00+00:00",
+        "point_gco2_kwh": 178.0,
+        "q10_gco2_kwh": 98.0,
+        "q90_gco2_kwh": 256.0,
+        "q025_gco2_kwh": 52.0,
+        "q975_gco2_kwh": 299.0
+      },
+      {
+        "horizon_periods": 96,
+        "target_sp_start_utc": "2026-09-14T22:00:00+00:00",
+        "point_gco2_kwh": 164.0,
+        "q10_gco2_kwh": 84.0,
+        "q90_gco2_kwh": 242.0,
+        "q025_gco2_kwh": 38.0,
+        "q975_gco2_kwh": 285.0
+      }
+    ]
+  }
+}
