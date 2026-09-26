@@ -1,0 +1,141 @@
+{
+  "snapshot": {
+    "name": "leaderboard",
+    "captured_at_utc": "2026-09-26T16:38:59.251190+00:00",
+    "commit": "79e33b3a5f4d2803ca4a54d68102875682b4bc75",
+    "params": null
+  },
+  "payload": {
+    "rows": [
+      {
+        "horizon_group": "H1",
+        "model_version": "G2_gbm_v1",
+        "n": 743,
+        "mae": 15.819,
+        "mase": 0.3964,
+        "position": 1
+      },
+      {
+        "horizon_group": "H1",
+        "model_version": "ESO_published",
+        "n": 1204,
+        "mae": 18.883,
+        "mase": 0.4732,
+        "position": 2
+      },
+      {
+        "horizon_group": "H1",
+        "model_version": "B1_seasonal_naive_q_v1",
+        "n": 1210,
+        "mae": 44.96,
+        "mase": 1.1266,
+        "position": 3
+      },
+      {
+        "horizon_group": "H1",
+        "model_version": "B0_persistence_v1",
+        "n": 1204,
+        "mae": 49.584,
+        "mase": 1.2425,
+        "position": 4
+      },
+      {
+        "horizon_group": "H2",
+        "model_version": "G2_gbm_v1",
+        "n": 2211,
+        "mae": 16.49,
+        "mase": 0.4132,
+        "position": 1
+      },
+      {
+        "horizon_group": "H2",
+        "model_version": "ESO_published",
+        "n": 3432,
+        "mae": 25.18,
+        "mase": 0.631,
+        "position": 2
+      },
+      {
+        "horizon_group": "H2",
+        "model_version": "B1_seasonal_naive_q_v1",
+        "n": 3450,
+        "mae": 46.737,
+        "mase": 1.1712,
+        "position": 3
+      },
+      {
+        "horizon_group": "H2",
+        "model_version": "B0_persistence_v1",
+        "n": 3432,
+        "mae": 59.76,
+        "mase": 1.4975,
+        "position": 4
+      },
+      {
+        "horizon_group": "H3",
+        "model_version": "G2_gbm_v1",
+        "n": 2840,
+        "mae": 16.913,
+        "mase": 0.4238,
+        "position": 1
+      },
+      {
+        "horizon_group": "H3",
+        "model_version": "ESO_published",
+        "n": 4181,
+        "mae": 22.099,
+        "mase": 0.5538,
+        "position": 2
+      },
+      {
+        "horizon_group": "H3",
+        "model_version": "B1_seasonal_naive_q_v1",
+        "n": 4205,
+        "mae": 47.336,
+        "mase": 1.1862,
+        "position": 3
+      },
+      {
+        "horizon_group": "H3",
+        "model_version": "B0_persistence_v1",
+        "n": 4181,
+        "mae": 52.669,
+        "mase": 1.3198,
+        "position": 4
+      },
+      {
+        "horizon_group": "H4",
+        "model_version": "G2_gbm_v1",
+        "n": 4953,
+        "mae": 18.976,
+        "mase": 0.4755,
+        "position": 1
+      },
+      {
+        "horizon_group": "H4",
+        "model_version": "ESO_published",
+        "n": 6751,
+        "mae": 23.059,
+        "mase": 0.5778,
+        "position": 2
+      },
+      {
+        "horizon_group": "H4",
+        "model_version": "B1_seasonal_naive_q_v1",
+        "n": 6799,
+        "mae": 48.032,
+        "mase": 1.2036,
+        "position": 3
+      },
+      {
+        "horizon_group": "H4",
+        "model_version": "B0_persistence_v1",
+        "n": 6751,
+        "mae": 57.848,
+        "mase": 1.4496,
+        "position": 4
+      }
+    ],
+    "note": "ESO_published is National Grid ESO's own forecast, recorded at the horizon we received it. Unlike a backtest, this comparison is horizon-matched \u2014 which is the only reason it is a fair one."
+  }
+}
