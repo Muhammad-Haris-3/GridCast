@@ -32,20 +32,48 @@ router = APIRouter(prefix="/v1", tags=["forecast"])
 MIN_PUBLISHABLE_N = 200
 
 
-@router.get("/forecast/current")
-def current_forecast() -> dict[str, Any]:
-    """The champion's most recent forecast, with intervals."""
-    latest = fetch_one(
+def latest_champion_run() -> dict[str, Any] | None:
+    """The champion and its most recent run, chosen the same way every time.
+
+    Nothing in the schema stops two models holding `role = 'champion'` at once —
+    mid-promotion, or after a demotion that did not land. Taking whichever row
+    Postgres returns first would let the served model change between two
+    requests a second apart. So when there is more than one, the most recently
+    promoted wins, then the lexically first version as a tie-break, and the
+    ambiguity is logged rather than silently resolved.
+
+    The choice is made here rather than with ORDER BY so it cannot depend on
+    how the query happens to be planned.
+    """
+    rows = fetch_all(
         """
-        SELECT m.model_version, max(f.run_at_utc) AS run_at_utc
+        SELECT m.model_version, m.role_since_utc, max(f.run_at_utc) AS run_at_utc
           FROM register.reg_forecast_point f
           JOIN register.reg_model_version m ON m.model_version = f.model_version
          WHERE m.role = 'champion'
-         GROUP BY m.model_version
+         GROUP BY m.model_version, m.role_since_utc
         """,
         readonly=True,
     )
-    if not latest or latest["run_at_utc"] is None:
+    rows = [row for row in rows if row["run_at_utc"] is not None]
+    if not rows:
+        return None
+    if len(rows) > 1:
+        logger.warning(
+            "%d models hold the champion role (%s); serving the most recently promoted",
+            len(rows),
+            ", ".join(sorted(row["model_version"] for row in rows)),
+        )
+    rows.sort(key=lambda row: row["model_version"])
+    rows.sort(key=lambda row: row["role_since_utc"], reverse=True)
+    return rows[0]
+
+
+@router.get("/forecast/current")
+def current_forecast() -> dict[str, Any]:
+    """The champion's most recent forecast, with intervals."""
+    latest = latest_champion_run()
+    if not latest:
         return {
             "model_version": None,
             "run_at_utc": None,
