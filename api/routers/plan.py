@@ -37,16 +37,35 @@ mart, both of which are precomputed.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Query
 
+from api.routers.forecast import latest_champion_run
 from gridcast.db import fetch_all, fetch_one
 
 router = APIRouter(prefix="/v1", tags=["plan"])
 
 # Horizon group boundaries, matching PREREGISTRATION §3 and mart_live_accuracy.
 HORIZON_GROUPS = [(1, 6, "H1"), (7, 24, "H2"), (25, 48, "H3"), (49, 96, "H4")]
+
+PERIOD = timedelta(minutes=30)
+
+# The pipeline issues every 30 minutes. A forecast older than this means runs
+# have been missed, and the response says so rather than letting a plan built
+# on it look as fresh as any other.
+STALE_AFTER = timedelta(hours=2)
+
+
+def _now() -> datetime:
+    """The current time. A function so tests can hold it still."""
+    return datetime.now(UTC)
+
+
+def _current_period_start(now: datetime) -> datetime:
+    """Start of the settlement period `now` falls in."""
+    return now.replace(minute=0 if now.minute < 30 else 30, second=0, microsecond=0)
 
 
 def _horizon_group(horizon: int) -> str:
@@ -58,17 +77,8 @@ def _horizon_group(horizon: int) -> str:
 
 def _load_champion_forecast() -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     """Load the champion's latest forecast. Returns (meta, horizons)."""
-    latest = fetch_one(
-        """
-        SELECT m.model_version, max(f.run_at_utc) AS run_at_utc
-          FROM register.reg_forecast_point f
-          JOIN register.reg_model_version m ON m.model_version = f.model_version
-         WHERE m.role = 'champion'
-         GROUP BY m.model_version
-        """,
-        readonly=True,
-    )
-    if not latest or latest["run_at_utc"] is None:
+    latest = latest_champion_run()
+    if not latest:
         return None, []
 
     horizons = fetch_all(
@@ -100,31 +110,32 @@ def _load_accuracy(model_version: str) -> dict[str, dict[str, Any]]:
     return {row["horizon_group"]: row for row in rows}
 
 
-def _sliding_window_min(periods: list[dict[str, Any]], window_size: int) -> tuple[int, float]:
-    """Find the starting index of the lowest-mean window. Returns (index, mean)."""
-    if window_size > len(periods):
-        window_size = len(periods)
+def _window_means(periods: list[dict[str, Any]], window_size: int) -> list[tuple[int, float]]:
+    """Every feasible window as (start index, mean intensity).
 
-    # Compute the first window sum.
-    current_sum = sum(float(periods[i]["point_gco2_kwh"]) for i in range(window_size))
-    best_sum = current_sum
-    best_start = 0
-
-    # Slide.
-    for i in range(1, len(periods) - window_size + 1):
-        current_sum -= float(periods[i - 1]["point_gco2_kwh"])
-        current_sum += float(periods[i + window_size - 1]["point_gco2_kwh"])
-        if current_sum < best_sum:
-            best_sum = current_sum
-            best_start = i
-
-    return best_start, best_sum / window_size
+    A window is feasible only if its periods are consecutive in time. Counting
+    positions is not enough: a run missing some horizons would otherwise let a
+    "two-hour" window quietly span three, and the recommendation would describe
+    a load that cannot actually run in the time it claims.
+    """
+    span = PERIOD * (window_size - 1)
+    windows = []
+    for index in range(len(periods) - window_size + 1):
+        block = periods[index : index + window_size]
+        if block[-1]["target_sp_start_utc"] - block[0]["target_sp_start_utc"] != span:
+            continue
+        mean = sum(float(p["point_gco2_kwh"]) for p in block) / window_size
+        windows.append((index, mean))
+    return windows
 
 
 def _window_starting_at_hour(
-    periods: list[dict[str, Any]], window_size: int, hour_local: int
+    periods: list[dict[str, Any]],
+    windows: list[tuple[int, float]],
+    window_size: int,
+    hour_local: int,
 ) -> dict[str, Any] | None:
-    """The window beginning at a given local hour, if it is inside the range.
+    """The feasible window beginning at a given local hour, if there is one.
 
     Europe/London, not UTC: the folk heuristic is "three in the morning" as a
     human experiences it, and for half the year those differ by an hour.
@@ -132,38 +143,17 @@ def _window_starting_at_hour(
     from zoneinfo import ZoneInfo
 
     london = ZoneInfo("Europe/London")
-    for index, period in enumerate(periods):
-        if index + window_size > len(periods):
-            break
-        local = period["target_sp_start_utc"].astimezone(london)
+    for index, mean in windows:
+        local = periods[index]["target_sp_start_utc"].astimezone(london)
         if local.hour == hour_local and local.minute == 0:
             block = periods[index : index + window_size]
             return {
                 "index": index,
-                "mean": sum(float(p["point_gco2_kwh"]) for p in block) / window_size,
+                "mean": mean,
                 "start_utc": block[0]["target_sp_start_utc"],
                 "end_utc": block[-1]["target_sp_start_utc"],
             }
     return None
-
-
-def _sliding_window_max(periods: list[dict[str, Any]], window_size: int) -> tuple[int, float]:
-    """Find the starting index of the highest-mean window."""
-    if window_size > len(periods):
-        window_size = len(periods)
-
-    current_sum = sum(float(periods[i]["point_gco2_kwh"]) for i in range(window_size))
-    worst_sum = current_sum
-    worst_start = 0
-
-    for i in range(1, len(periods) - window_size + 1):
-        current_sum -= float(periods[i - 1]["point_gco2_kwh"])
-        current_sum += float(periods[i + window_size - 1]["point_gco2_kwh"])
-        if current_sum > worst_sum:
-            worst_sum = current_sum
-            worst_start = i
-
-    return worst_start, worst_sum / window_size
 
 
 def _hit_rate(model_version: str, horizon_group: str) -> dict[str, Any]:
@@ -287,30 +277,60 @@ def plan(
     model_version = latest["model_version"]
     run_at_utc = latest["run_at_utc"]
 
-    # Filter to the search window.
-    search_periods = int(within_hours * 2)  # half-hourly periods
+    # The search window is measured from the clock, not from the forecast.
+    #
+    # Slicing the first N horizons assumed the latest run was issued moments
+    # ago. When the pipeline stalls it was not, and the leading horizons are
+    # periods that have already happened — a "best window" among them is a
+    # recommendation to run the dishwasher yesterday. Periods that have ended
+    # are dropped; the one in progress is kept, because it is "now".
+    now = _now()
+    age = now - run_at_utc
+    stale = age > STALE_AFTER
+    freshness = {
+        "forecast_age_minutes": int(age.total_seconds() // 60),
+        "stale": stale,
+    }
+    search_start = _current_period_start(now)
+    search_end = search_start + timedelta(hours=within_hours)
     window_size = max(1, int(duration_hours * 2))
-    periods = horizons[:search_periods]
+    periods = sorted(
+        (p for p in horizons if search_start <= p["target_sp_start_utc"] < search_end),
+        key=lambda p: p["target_sp_start_utc"],
+    )
+    windows = _window_means(periods, window_size)
 
-    if len(periods) < window_size:
+    if not windows:
+        reason = (
+            f"the latest forecast was issued at {run_at_utc.isoformat()} and does not "
+            f"cover the next {within_hours}h — the pipeline may have stalled"
+            if stale
+            else f"no unbroken {duration_hours}h run of forecast periods in the "
+            f"next {within_hours}h ({len(periods)} periods available)"
+        )
         return {
             "model_version": model_version,
             "run_at_utc": run_at_utc,
-            "detail": (
-                f"not enough forecast periods: need {window_size} for "
-                f"{duration_hours}h but only {len(periods)} available"
-            ),
+            **freshness,
+            "detail": f"not enough forecast periods: {reason}",
         }
 
-    # Find best and worst windows.
-    best_start, best_mean = _sliding_window_min(periods, window_size)
-    worst_start, worst_mean = _sliding_window_max(periods, window_size)
+    # Find best and worst windows. min/max keep the earliest on a tie.
+    best_start, best_mean = min(windows, key=lambda w: w[1])
+    worst_start, worst_mean = max(windows, key=lambda w: w[1])
 
     best_periods = periods[best_start : best_start + window_size]
     worst_periods = periods[worst_start : worst_start + window_size]
 
-    # "Now" counterfactual: the first `window_size` periods.
-    now_mean = sum(float(p["point_gco2_kwh"]) for p in periods[:window_size]) / window_size
+    # "Now" counterfactual: the soonest window that can start. Issuing never
+    # forecasts the period already under way, so that is normally the next one.
+    # A gap at the front means there is no honest figure for running
+    # immediately, and none is invented.
+    now_window = (
+        windows[0]
+        if windows[0][0] == 0 and periods[0]["target_sp_start_utc"] <= search_start + PERIOD
+        else None
+    )
 
     # "Average" counterfactual: mean of ALL periods in the search window.
     #
@@ -325,7 +345,7 @@ def plan(
     # wind-driven grid the cleanest hours often are not overnight at all, so
     # this comparison can come out negative — the recommendation being worse
     # than the habit. That result would be reported, not suppressed.
-    overnight = _window_starting_at_hour(periods, window_size, hour_local=3)
+    overnight = _window_starting_at_hour(periods, windows, window_size, hour_local=3)
 
     # Savings.
     def _mean_quantile(block: list[dict[str, Any]], key: str) -> float | None:
@@ -408,13 +428,19 @@ def plan(
             "target_sp_start_utc": p["target_sp_start_utc"],
             "horizon_periods": p["horizon_periods"],
             "point_gco2_kwh": float(p["point_gco2_kwh"]),
-            "q10_gco2_kwh": float(p["q10_gco2_kwh"]) if p.get("q10_gco2_kwh") else None,
-            "q90_gco2_kwh": float(p["q90_gco2_kwh"]) if p.get("q90_gco2_kwh") else None,
+            # `is not None`, not truthiness: 0.0 is a forecast, not a missing one.
+            "q10_gco2_kwh": (
+                float(p["q10_gco2_kwh"]) if p.get("q10_gco2_kwh") is not None else None
+            ),
+            "q90_gco2_kwh": (
+                float(p["q90_gco2_kwh"]) if p.get("q90_gco2_kwh") is not None else None
+            ),
         }
 
     return {
         "model_version": model_version,
         "run_at_utc": run_at_utc,
+        **freshness,
         "search_window_hours": within_hours,
         "duration_hours": duration_hours,
         "appliance_kwh": appliance_kwh,
@@ -428,16 +454,22 @@ def plan(
             "max_horizon": max_horizon,
         },
         "counterfactuals": {
-            "now": {
-                "mean_gco2_kwh": round(now_mean, 1),
-                "note": "Running immediately. Flatters the tool whenever now happens to be dirty.",
-                **_saving(
-                    now_mean,
-                    best_mean,
-                    appliance_kwh,
-                    baseline_block=periods[:window_size],
-                ),
-            },
+            "now": (
+                {
+                    "mean_gco2_kwh": round(now_window[1], 1),
+                    "note": (
+                        "Running immediately. Flatters the tool whenever now happens to be dirty."
+                    ),
+                    **_saving(
+                        now_window[1],
+                        best_mean,
+                        appliance_kwh,
+                        baseline_block=periods[:window_size],
+                    ),
+                }
+                if now_window
+                else {"note": "The forecast has no unbroken window starting now."}
+            ),
             "average": {
                 "mean_gco2_kwh": round(all_mean, 1),
                 "note": (
