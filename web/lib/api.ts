@@ -275,6 +275,10 @@ export type PlanConfidence = {
 export type PlanResult = {
   model_version: string | null;
   run_at_utc: string | null;
+  // The forecast's own age, which the snapshot's age does not cover: a live
+  // read is "now" even when the forecast behind it is hours old.
+  forecast_age_minutes?: number;
+  stale?: boolean;
   search_window_hours?: number;
   duration_hours?: number;
   appliance_kwh?: number;
