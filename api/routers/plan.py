@@ -27,8 +27,9 @@ quotes a single number implies a precision the forecast does not have.
 Alongside it goes the **hit rate**: how often the window this planner would
 have recommended — same duration, same search window, at this horizon — has
 historically landed in the cleanest third of that run's feasible windows. That
-is measured by replaying the planner over the scored register, not modelled. It may well be unimpressive at 48 hours. Publishing it anyway is the
-point of the project.
+is measured by replaying the planner over the scored register, not modelled.
+It may well be unimpressive at 48 hours. Publishing it anyway is the point of
+the project.
 
 Nothing here writes to the database. Nothing here trains. The planner is a
 pure function of the champion's most recent forecast and the live accuracy
