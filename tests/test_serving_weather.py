@@ -237,16 +237,37 @@ def test_weather_stopping_before_the_first_target_is_refused() -> None:
         assert_weather_reaches(stale, targets())
 
 
-def test_weather_reaching_only_the_first_target_is_accepted() -> None:
-    """Partial forward coverage is legitimate; no forward coverage is not.
+def test_weather_reaching_only_the_first_target_is_refused() -> None:
+    """Partial forward coverage is a stale forecast, not an edge case.
 
-    The upstream forecast is finite, and a run near its edge can outrun it. The
-    tail horizons then carry NaN weather, which the model handles natively and
-    the issuing job prints. Refusing that would mean withholding a whole
-    forecast over the last few horizons of it.
+    This used to be accepted, with the tail horizons issued on NaN weather. The
+    live forecast is three days long and fetched every half hour, so a fresh one
+    always covers the 48-hour horizon; a frame that stops short is what a failed
+    om_forecast leaves behind, and issuing its tail is the silent substitution
+    the guard exists to stop, confined to the horizons where it hides best.
     """
     short = weather_frame(ANCHOR - timedelta(days=1), ANCHOR + PERIOD)
-    assert_weather_reaches(short, targets())
+    with pytest.raises(WeatherCoverageError, match="short of the furthest target"):
+        assert_weather_reaches(short, targets(), columns=short.columns)
+
+
+def test_weather_reaching_every_target_is_accepted() -> None:
+    full = weather_frame(ANCHOR - timedelta(days=1), ANCHOR + timedelta(days=2))
+    assert_weather_reaches(full, targets(), columns=full.columns)
+
+
+def test_weather_missing_a_location_the_model_reads_is_refused() -> None:
+    full = weather_frame(ANCHOR - timedelta(days=1), ANCHOR + timedelta(days=2))
+    columns = [*full.columns, "temperature_2m_c__elsewhere"]
+    with pytest.raises(WeatherCoverageError, match="no column for"):
+        assert_weather_reaches(full, targets(), columns=columns)
+
+
+def test_weather_blank_at_one_target_is_refused() -> None:
+    holed = weather_frame(ANCHOR - timedelta(days=1), ANCHOR + timedelta(days=2))
+    holed.loc[ANCHOR + 10 * PERIOD, f"wind_speed_100m_kmh__{LOCATION}"] = np.nan
+    with pytest.raises(WeatherCoverageError, match="blank at 1 of 96 targets"):
+        assert_weather_reaches(holed, targets(), columns=holed.columns)
 
 
 # ---------------------------------------------------------------------------

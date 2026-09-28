@@ -54,6 +54,7 @@ jobs:
         run: python -m gridcast.gapfill --lookback 7
 
       - name: Rebuild warehouse
+        id: rebuild
         if: always()
         working-directory: dbt_gridcast
         run: dbt build --profiles-dir .
@@ -64,9 +65,43 @@ jobs:
           PGDATABASE: ${{ secrets.PGDATABASE }}
           PGSSLMODE: require
 
+      # Forecasting needs a database it can write to. Probed on its own, rather
+      # than inferred from the rebuild, because dbt connects with the PG*
+      # credentials and issuing with GRIDCAST_DATABASE_URL: the rebuild
+      # succeeding does not prove the register is reachable. Runs after an
+      # ingest failure for the same reason the heal does.
+      - name: Check the database is reachable
+        id: database
+        if: always()
+        run: |
+          python - <<'PY'
+          from gridcast.db import connect
+
+          with connect() as conn, conn.cursor() as cur:
+              cur.execute("SELECT 1")
+          print("database reachable")
+          PY
+
       # Issue forecasts AFTER the warehouse rebuild, so the model forecasts from
       # matured actuals rather than from whatever landed thirty seconds ago.
+      #
+      # Runs even if ingestion failed. One source timing out used to cost every
+      # model its forecast — on 2026-09-28 an om_forecast ReadTimeout meant no
+      # B0, B1 or ESO_published either, none of which reads weather, and a hole
+      # in the register cannot be refilled once the moment has passed. A failed
+      # source now costs only the models that depend on it: G2 refuses to issue
+      # on weather that does not cover every target (assert_weather_reaches) and
+      # records the refusal in landing.run_log instead.
+      #
+      # It does NOT run when the database is unreachable or the warehouse
+      # rebuild failed. Forecasting from a broken build would write rows built
+      # on actuals nobody can vouch for into a register that cannot be
+      # corrected; skipping leaves an honest gap. `!cancelled()` rather than
+      # `always()` so a cancelled run still stops here. The run stays red
+      # either way: the ingest step's failure is still a failure, and
+      # "Surface the failure" below still fires.
       - name: Issue forecasts
+        if: ${{ !cancelled() && steps.database.outcome == 'success' && steps.rebuild.outcome == 'success' }}
         run: python -m gridcast.forecast
         env:
           GRIDCAST_DATABASE_URL: ${{ secrets.GRIDCAST_DATABASE_URL }}
@@ -136,6 +171,9 @@ jobs:
               commit --quiet -m "snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA:0:12}"
           git push --quiet --force "$REPO" snapshots
 
+      # Keeps the run red when any step failed — ingestion included, now that
+      # forecasting carries on past it. The forecasts that did issue are real;
+      # the source that failed still needs someone to look at it.
       - name: Surface the failure
         if: failure()
         run: echo "::error title=pipeline::Ingestion, forecasting or the warehouse build failed. Check landing.run_log for the source and error class."

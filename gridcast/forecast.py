@@ -348,11 +348,13 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
     from gridcast.features import (
         SERVING_HISTORY_DAYS,
         WEATHER_TRAILING_DAYS,
+        WeatherCoverageError,
         assert_weather_reaches,
         build_features,
         load_intensity_history,
         load_mix_history,
         load_weather_forecast,
+        weather_columns,
     )
 
     # Issuing reaches 168 hours back. Loading the rest of the archive 48 times
@@ -377,23 +379,29 @@ def build_g2_forecast(bundle, run_at, anchor, targets):
         anchor - timedelta(days=WEATHER_TRAILING_DAYS),
         until=max(targets),
     )
-    assert_weather_reaches(weather, targets)
-
-    # Partial forward coverage is legitimate — the upstream forecast is finite
-    # and a run near its edge can outrun it — but it is not silent. The tail
-    # horizons carry NaN weather, and a leaderboard that degrades at H4 for a
-    # week is worth being able to explain from the logs.
-    furthest_weather = weather.index.max()
-    if furthest_weather < max(targets):
-        print(
-            f"  G2_gbm_v1               weather stops at "
-            f"{furthest_weather:%Y-%m-%d %H:%M}Z, short of the furthest target "
-            f"at {max(targets):%Y-%m-%d %H:%M}Z — tail horizons issue with NaN weather"
-        )
+    # Every target, in every weather column the model reads, or G2 does not
+    # issue. A frame that stops short is a stale forecast — om_forecast failed
+    # and the last good fetch no longer reaches the tail — and issuing it would
+    # put NaN weather into rows that are recorded as G2. The raise is caught by
+    # main() and written to the run log; the other models issue regardless.
+    weather_features = [c for c in bundle["features"] if c in weather_columns()]
+    assert_weather_reaches(weather, targets, weather_features)
 
     frame = build_features(
         run_at, targets, intensity=intensity, mix=mix, weather=weather, anchor=anchor
     )
+
+    # The same bar on what the model will actually read, ramps included. The
+    # ramp compares each target against the trailing day before the anchor,
+    # which the forward check above cannot see; a blank there is NaN weather by
+    # another route.
+    derived = [c for c in bundle["features"] if c.removeprefix("ramp_") in weather_columns()]
+    blank = [c for c in derived if c not in frame.columns or frame[c].isna().any()]
+    if blank:
+        raise WeatherCoverageError(
+            f"weather features blank after building: {', '.join(blank)}. "
+            "G2 would issue on NaN weather."
+        )
     matrix = frame[bundle["features"]].to_numpy(dtype=float)
 
     point = bundle["model"].predict(matrix)
