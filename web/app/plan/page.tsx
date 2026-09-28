@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { getPlan, unavailableReason, type PlanResult } from "@/lib/api";
-import { loadMatching } from "@/lib/snapshot";
+import { describeAge, loadMatching } from "@/lib/snapshot";
 import DataAge from "../DataAge";
 import PlanControls from "./PlanControls";
 import ForecastChart from "./ForecastChart";
@@ -90,6 +91,22 @@ export default async function PlanPage({
       <div style={{ marginTop: 24 }}>
         <DataAge loaded={loaded} />
       </div>
+
+      {plan.stale && (
+        // DataAge dates the read, not the forecast. When the snapshot is stale
+        // the page falls through to a live read, which DataAge calls current,
+        // while the forecast behind it is exactly as old as the pipeline stall.
+        <div className="card caution" style={{ marginBottom: 26 }}>
+          <span className="pill warn">Forecast is old</span>
+          <p style={{ marginBottom: 0 }}>
+            The latest forecast was issued{" "}
+            {describeAge((plan.forecast_age_minutes ?? 0) * 60)}. The pipeline issues one every
+            30 minutes, so runs have been missed. The recommendation below only uses periods that
+            are still ahead, but it rests on an older forecast than usual. The{" "}
+            <Link href="/status">status page</Link> says why.
+          </p>
+        </div>
+      )}
 
       <div className="card accent" style={{ padding: "30px 32px" }}>
         <div
