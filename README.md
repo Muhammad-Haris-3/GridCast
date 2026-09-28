@@ -253,10 +253,10 @@ npm --prefix web run dev
 
 All three are free, keyless, and were verified live on 2026-08-12.
 
-- **[Carbon Intensity API](https://api.carbonintensity.org.uk)** — National Grid
+- **[Carbon Intensity API](https://carbonintensity.org.uk)** — National Grid
   ESO. Half-hourly national intensity with both forecast and actual, back to
   2018-05-09. Licensed CC BY 4.0.
-- **[Elexon BMRS Insights](https://data.elexon.co.uk)** — half-hourly demand
+- **[Elexon BMRS Insights](https://bmrs.elexon.co.uk)** — half-hourly demand
   outturn in MW and market index price, with a `publishTime` distinct from the
   settlement period, which is what makes point-in-time-correct features possible.
 - **[Open-Meteo](https://open-meteo.com)** — hourly weather history, forecasts,
