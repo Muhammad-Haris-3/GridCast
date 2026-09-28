@@ -24,6 +24,7 @@ and the gap stays invisible until the live scoreboard opens.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -277,12 +278,24 @@ class WeatherCoverageError(RuntimeError):
     """The weather loaded does not reach the periods being forecast."""
 
 
-def assert_weather_reaches(weather: pd.DataFrame, targets: pd.DatetimeIndex) -> pd.DataFrame:
-    """Refuse a weather frame that stops before the first target.
+WEATHER_MEASURES = ("wind_speed_100m_kmh", "temperature_2m_c", "shortwave_radiation_wm2")
+
+
+def weather_columns(locations: Iterable[str] = FEATURE_LOCATIONS) -> list[str]:
+    """The wide weather columns _load_weather produces, one per measure and place."""
+    return [f"{measure}__{location}" for measure in WEATHER_MEASURES for location in locations]
+
+
+def assert_weather_reaches(
+    weather: pd.DataFrame,
+    targets: pd.DatetimeIndex,
+    columns: Iterable[str] | None = None,
+) -> pd.DataFrame:
+    """Refuse a weather frame that does not cover every target, in every column.
 
     build_features consumes weather by reindexing onto the targets, so a frame
     that ends before them is not an error there — it is NaN, in every weather
-    column, for every horizon. HistGradientBoosting takes NaN without
+    column, for every horizon it misses. HistGradientBoosting takes NaN without
     complaining, and the run issues a forecast that looks like G2 and is not.
 
     Those rows go into an append-only register nothing can edit, and are scored
@@ -290,11 +303,24 @@ def assert_weather_reaches(weather: pd.DataFrame, targets: pd.DatetimeIndex) -> 
     series is recoverable evidence; a stretch of forecasts from a silently
     different model is not, because nothing in the register says which is which.
 
-    So it is checked before issuing rather than discovered after scoring.
-    Reaching the FIRST target is the bar: partial forward coverage leaves the
-    tail NaN, which the model handles natively and which happens legitimately
-    when the upstream forecast is short. No forward coverage at all is a broken
-    pipeline, and the run log should say so.
+    So it is checked before issuing rather than discovered after scoring, and
+    the bar is EVERY target, not the first. This used to accept a frame that
+    reached only the first target and issue the tail with NaN weather, on the
+    reasoning that the upstream forecast is finite. It is three days long and
+    fetched every half hour, so a fresh one always covers the 48-hour horizon;
+    the only frames that stop short are stale ones — om_forecast failing, as it
+    did at 2026-09-28 00:30Z, and the last good fetch no longer reaching past
+    midnight. Issuing those tails is the same silent substitution, just
+    confined to the horizons where it is hardest to notice.
+
+    That also bounds staleness. The frontier always comes from the newest fetch
+    (older fetches reach less far forward), and a fetch reaches the end of the
+    second UTC day after it, so weather that covers anchor + 48 hours was
+    fetched within the last day.
+
+    `columns` are the weather columns the caller's model reads; by default every
+    measure at every feature location. A location missing from the frame, or
+    present but blank at some target, is NaN in the model just the same.
     """
     if weather.empty:
         raise WeatherCoverageError(
@@ -311,6 +337,32 @@ def assert_weather_reaches(weather: pd.DataFrame, targets: pd.DatetimeIndex) -> 
             f"at {targets.min():%Y-%m-%d %H:%M}Z. Every forward weather feature "
             "would be NaN and the forecast would not be G2. This is what reading "
             "the vintage relation at issue time looks like."
+        )
+    if furthest < targets.max():
+        raise WeatherCoverageError(
+            f"weather stops at {furthest:%Y-%m-%d %H:%M}Z, short of the furthest "
+            f"target at {targets.max():%Y-%m-%d %H:%M}Z. The tail horizons would "
+            "issue with NaN weather. The live forecast is stale — check that "
+            "om_forecast ingested this run."
+        )
+
+    required = list(weather_columns() if columns is None else columns)
+    missing = [column for column in required if column not in weather.columns]
+    if missing:
+        raise WeatherCoverageError(
+            f"weather has no column for {', '.join(missing)} — a location or "
+            "measure is absent from the live forecast."
+        )
+
+    aligned = weather.reindex(targets)[required]
+    blank = aligned.isna()
+    if blank.to_numpy().any():
+        first = aligned.index[blank.any(axis=1)][0]
+        columns_blank = [c for c in required if blank[c].any()]
+        raise WeatherCoverageError(
+            f"weather is blank at {int(blank.any(axis=1).sum())} of {len(targets)} "
+            f"targets, first at {first:%Y-%m-%d %H:%M}Z, in "
+            f"{', '.join(columns_blank)}. Those horizons would issue with NaN weather."
         )
     return weather
 
