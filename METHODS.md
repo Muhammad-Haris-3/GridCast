@@ -50,8 +50,39 @@ issuing with live forecast weather on 2026-09-04; its record starts there.
 ESO_published have issued every run since 2026-08-12 and take no weather
 features, so nothing about the fault above touches them.
 
-**The hit rate does not exist yet.** Whether a recommendation actually lands in
-a good window — the thing that decides if the product works — is unmeasured.
+**How the hit rate is measured.** The hit rate asks whether a recommendation
+actually landed in a good window, which is what decides whether the product
+works. It comes from replaying the planner over the scored register, not from
+a model. For each past run, the replay rebuilds the request the planner would
+have answered at issue time. That means the same `duration_hours`, the same
+`within_hours` window measured from the clock, and the same rule that a window
+counts only if its periods are consecutive. The replay takes the window the
+planner would have picked (lowest mean forecast, earliest on a tie) and ranks
+its actual mean against the actual means of every other feasible window in
+that run. It is a hit if it lands in the cleanest third. Picking at random
+lands there about a third of the time. A run is counted only once every period
+in its search window has been scored, so the pick is always judged against the
+same choices it was picked from. Each decision is filed under the horizon
+group of the window's first period, which is the rule the plan page uses to
+label the recommendation.
+
+**Published planner figures changed on 2026-09-28.** Before this date two of
+them measured something other than what they said:
+
+- The "average" counterfactual was the mean of all periods in the search
+  window. It claimed to be the expected result of picking a start at random,
+  which is the mean over feasible window starts. The two differ whenever gaps
+  break some windows, and always at the edges: the first and last periods
+  appear in fewer windows than the middle ones. It is now the mean of the
+  window means.
+- The hit rate ranked single half-hour periods. It took the cleanest forecast
+  period of each run and filed it under that period's own horizon group,
+  whatever load length or search window was asked for. That does not replay
+  the planner, which recommends a window of `duration_hours`. It now replays
+  the actual decision, as described above.
+
+Hit rates and "average" savings published before 2026-09-28 do not match
+today's, and the older ones should not be read as measurements of the planner.
 
 **The ESO comparison in backtesting is not fair.** The stored ESO forecast is
 their final near-term value, not a 48-hour-ahead one; 33 of 46 future periods
