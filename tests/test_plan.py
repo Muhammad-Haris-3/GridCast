@@ -46,12 +46,19 @@ def _install(
     monkeypatch: pytest.MonkeyPatch,
     champions: list[dict[str, Any]],
     points: dict[str, list[dict[str, Any]]],
+    scored: list[dict[str, Any]] = (),
 ) -> None:
-    """Stand a fake register behind both routers."""
+    """Stand a fake register behind both routers.
+
+    `scored` is what the hit-rate replay reads: forecast points joined to their
+    actuals, with `actual_gco2_kwh` None where no score has arrived yet.
+    """
 
     def fake_fetch_all(query: str, params: Any = None, **_: Any) -> list[dict[str, Any]]:
         if "role = 'champion'" in query:
             return [dict(row) for row in champions]
+        if "reg_forecast_score" in query:
+            return [dict(row) for row in scored if row["horizon_periods"] <= params["max_horizon"]]
         if "FROM register.reg_forecast_point" in query:
             return [dict(p) for p in points[params[0]]]
         return []  # accuracy mart: nothing scored yet
@@ -60,7 +67,7 @@ def _install(
         if "role = 'champion'" in query:
             # What the old query did: whichever champion row came back first.
             return dict(champions[0]) if champions else None
-        return {"decisions": 0, "hits": 0}  # hit rate: nothing scored yet
+        return None
 
     for module in (forecast_router, plan_router):
         monkeypatch.setattr(module, "fetch_all", fake_fetch_all, raising=False)
@@ -194,3 +201,88 @@ def test_now_is_the_soonest_period_that_can_start(monkeypatch: pytest.MonkeyPatc
 
     assert body["stale"] is False
     assert body["counterfactuals"]["now"]["mean_gco2_kwh"] == 300.0
+
+
+def test_average_is_the_mean_over_feasible_window_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Three periods, two one-hour windows: (0, 0) and (0, 300). Picking a start
+    # at random averages 75. The mean of the periods is 100, which weights the
+    # dirty edge period as if it began a window of its own.
+    run_at = NOW - timedelta(minutes=10)
+    _install(
+        monkeypatch,
+        [_champion("m1", run_at, run_at)],
+        {"m1": _points(run_at, [0.0, 0.0, 300.0] + [100.0] * 93)},
+    )
+
+    body = _plan(duration_hours=1, within_hours=2)
+
+    assert body["counterfactuals"]["average"]["mean_gco2_kwh"] == 75.0
+
+
+def _scored(run_at: datetime, forecast: list[float], actual: list[float | None]) -> list:
+    """Scored register rows for one run, at horizons 1..len(forecast)."""
+    return [
+        {
+            "run_at_utc": run_at,
+            "horizon_periods": h,
+            "target_sp_start_utc": run_at + PERIOD * h,
+            "point_gco2_kwh": f,
+            "actual_gco2_kwh": a,
+        }
+        for h, (f, a) in enumerate(zip(forecast, actual, strict=True), start=1)
+    ]
+
+
+def test_hit_rate_scores_the_window_the_planner_would_have_picked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # One-hour loads within 3.5 hours: horizons 1-6, five feasible windows.
+    # The cleanest forecast *period* (h2) really was clean, so a per-period
+    # replay calls this a hit. But the planner recommends a *window*, h1-h2,
+    # whose actual mean of 150 was beaten by two of the other four windows.
+    # That is not the cleanest third.
+    run_at = datetime(2026, 5, 1, 0, 0, tzinfo=UTC)
+    rows = _scored(
+        run_at,
+        [100.0, 10.0, 100.0, 100.0, 100.0, 100.0],
+        [300.0, 0.0, 300.0, 0.0, 0.0, 0.0],
+    )
+    _install(monkeypatch, [], {}, scored=rows)
+
+    result = plan_router._hit_rate("m1", "H1", 1.0, 3.5)
+
+    assert result["available"] is True
+    assert (result["decisions"], result["hits"]) == (1, 0)
+
+
+def test_hit_rate_files_each_decision_under_its_windows_horizon_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Within five hours the planner picks h7-h8, an H2 window. It belongs in
+    # the H2 record and nowhere in H1, however many H1 periods the run has.
+    run_at = datetime(2026, 5, 1, 0, 0, tzinfo=UTC)
+    forecast = [100.0] * 6 + [10.0, 10.0] + [100.0] * 2
+    actual = [200.0] * 6 + [50.0, 50.0] + [200.0] * 2
+    _install(monkeypatch, [], {}, scored=_scored(run_at, forecast, actual))
+
+    assert plan_router._hit_rate("m1", "H1", 1.0, 5.0)["available"] is False
+    h2 = plan_router._hit_rate("m1", "H2", 1.0, 5.0)
+    assert (h2["decisions"], h2["hits"]) == (1, 1)
+
+
+def test_hit_rate_waits_until_the_whole_search_window_is_scored(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The last period has no actual yet. Judging the pick against the windows
+    # that happen to be scored would change the menu it was chosen from.
+    run_at = datetime(2026, 5, 1, 0, 0, tzinfo=UTC)
+    rows = _scored(
+        run_at,
+        [10.0, 10.0, 100.0, 100.0, 100.0, 100.0],
+        [0.0, 0.0, 100.0, 100.0, 100.0, None],
+    )
+    _install(monkeypatch, [], {}, scored=rows)
+
+    assert plan_router._hit_rate("m1", "H1", 1.0, 3.5)["available"] is False

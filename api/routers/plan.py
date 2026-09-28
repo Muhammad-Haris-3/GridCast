@@ -24,10 +24,10 @@ The saving is reported as an interval, not a point. It is derived from the
 forecast's own q10/q90 rather than asserted, because a recommendation that
 quotes a single number implies a precision the forecast does not have.
 
-Alongside it goes the **hit rate**: how often a recommendation made at this
-horizon has historically landed in the cleanest third of its feasible window.
-That is measured by replaying the planner over the scored register, not
-modelled. It may well be unimpressive at 48 hours. Publishing it anyway is the
+Alongside it goes the **hit rate**: how often the window this planner would
+have recommended — same duration, same search window, at this horizon — has
+historically landed in the cleanest third of that run's feasible windows. That
+is measured by replaying the planner over the scored register, not modelled. It may well be unimpressive at 48 hours. Publishing it anyway is the
 point of the project.
 
 Nothing here writes to the database. Nothing here trains. The planner is a
@@ -43,7 +43,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 
 from api.routers.forecast import latest_champion_run
-from gridcast.db import fetch_all, fetch_one
+from gridcast.db import fetch_all
 
 router = APIRouter(prefix="/v1", tags=["plan"])
 
@@ -156,64 +156,108 @@ def _window_starting_at_hour(
     return None
 
 
-def _hit_rate(model_version: str, horizon_group: str) -> dict[str, Any]:
+def _search_periods(
+    horizons: list[dict[str, Any]], now: datetime, within_hours: float
+) -> list[dict[str, Any]]:
+    """The periods a plan made at `now` may choose from, in time order.
+
+    Measured from the clock, not from the forecast: periods that have ended are
+    dropped, the one in progress is kept because it is "now", and nothing past
+    `within_hours` is considered. Shared by `plan()` and the hit-rate replay so
+    that the decision being scored is the decision being served.
+    """
+    search_start = _current_period_start(now)
+    search_end = search_start + timedelta(hours=within_hours)
+    return sorted(
+        (p for p in horizons if search_start <= p["target_sp_start_utc"] < search_end),
+        key=lambda p: p["target_sp_start_utc"],
+    )
+
+
+def _hit_rate(
+    model_version: str,
+    horizon_group: str,
+    duration_hours: float,
+    within_hours: float,
+) -> dict[str, Any]:
     """How often the planner's pick actually landed in the cleanest third.
 
-    Measured by replaying the recommendation over the scored register, not
-    modelled. For every past issue time, take the period the model ranked
-    cleanest and ask where it fell once the actuals arrived. If it landed in the
-    lowest tercile of what actually happened, the recommendation did its job.
+    Measured by replaying the planner over the scored register, not modelled.
+    For every past run, rebuild the request as it would have been answered at
+    issue time — the same search window, the same `duration_hours`, the same
+    feasibility rule — take the window the planner would have recommended, and
+    ask where it fell among that run's feasible windows once the actuals
+    arrived. If its actual mean landed in the lowest third, the recommendation
+    did its job.
+
+    A run counts only once every period in its search window has been scored.
+    Scoring a partly matured run against the windows that happen to have
+    actuals would compare the pick against a different menu from the one it
+    was chosen from.
+
+    Each decision is filed under the horizon group of the window it picked —
+    the same rule `plan()` uses to label the recommendation — so the rate shown
+    beside a recommendation is the record of recommendations like it.
 
     A forecast can have respectable MAE and still choose badly: what matters to
     someone shifting a load is not how close the number was, but whether the
-    hour it pointed at turned out to be a good one. Those are different
+    window it pointed at turned out to be a good one. Those are different
     questions and only the second one is the product.
 
     This may be unimpressive at 48 hours. It is published either way.
     """
-    row = fetch_one(
+    window_size = max(1, int(duration_hours * 2))
+    # Horizon 1 starts one period after the run's own period, so a search of
+    # `within_hours` never reaches past this horizon.
+    max_horizon = int(within_hours * 2) + 1
+    rows = fetch_all(
         """
-        WITH scored AS (
-            SELECT f.run_at_utc,
-                   f.target_sp_start_utc,
-                   f.point_gco2_kwh,
-                   s.actual_gco2_kwh
-              FROM register.reg_forecast_point f
-              JOIN register.reg_forecast_score s ON s.forecast_id = f.forecast_id
-             WHERE f.model_version = %(model)s
-               AND CASE
-                     WHEN f.horizon_periods BETWEEN 1 AND 6   THEN 'H1'
-                     WHEN f.horizon_periods BETWEEN 7 AND 24  THEN 'H2'
-                     WHEN f.horizon_periods BETWEEN 25 AND 48 THEN 'H3'
-                     ELSE 'H4'
-                   END = %(grp)s
-        ),
-        ranked AS (
-            SELECT run_at_utc,
-                   target_sp_start_utc,
-                   -- What the model thought was cleanest at issue time...
-                   row_number() OVER (
-                       PARTITION BY run_at_utc ORDER BY point_gco2_kwh
-                   ) AS forecast_rank,
-                   -- ...against where it actually landed.
-                   percent_rank() OVER (
-                       PARTITION BY run_at_utc ORDER BY actual_gco2_kwh
-                   ) AS actual_pct,
-                   count(*)      OVER (PARTITION BY run_at_utc) AS candidates
-              FROM scored
-        )
-        SELECT count(*) AS decisions,
-               count(*) FILTER (WHERE actual_pct <= 0.3334) AS hits
-          FROM ranked
-         WHERE forecast_rank = 1
-           AND candidates >= 3
+        SELECT f.run_at_utc,
+               f.horizon_periods,
+               f.target_sp_start_utc,
+               f.point_gco2_kwh,
+               s.actual_gco2_kwh
+          FROM register.reg_forecast_point f
+          LEFT JOIN register.reg_forecast_score s ON s.forecast_id = f.forecast_id
+         WHERE f.model_version = %(model)s
+           AND f.horizon_periods <= %(max_horizon)s
+         ORDER BY f.run_at_utc, f.horizon_periods
         """,
-        {"model": model_version, "grp": horizon_group},
+        {"model": model_version, "max_horizon": max_horizon},
         readonly=True,
     )
 
-    decisions = row["decisions"] if row else 0
-    hits = row["hits"] if row else 0
+    runs: dict[datetime, list[dict[str, Any]]] = {}
+    for row in rows:
+        runs.setdefault(row["run_at_utc"], []).append(row)
+
+    decisions = 0
+    hits = 0
+    for run_at_utc, horizons in runs.items():
+        periods = _search_periods(horizons, run_at_utc, within_hours)
+        if not periods or any(p["actual_gco2_kwh"] is None for p in periods):
+            continue
+        windows = _window_means(periods, window_size)
+        if len(windows) < 3:
+            continue
+
+        # The planner's pick: lowest forecast mean, earliest on a tie.
+        best_start, _ = min(windows, key=lambda w: w[1])
+        if _horizon_group(int(periods[best_start]["horizon_periods"])) != horizon_group:
+            continue
+
+        actual_by_start = {
+            index: sum(float(p["actual_gco2_kwh"]) for p in periods[index : index + window_size])
+            / window_size
+            for index, _ in windows
+        }
+        actuals = list(actual_by_start.values())
+        chosen = actual_by_start[best_start]
+        # percent_rank: the share of other windows that were strictly cleaner.
+        cleaner = sum(1 for a in actuals if a < chosen)
+        decisions += 1
+        if cleaner / (len(actuals) - 1) <= 1 / 3:
+            hits += 1
 
     if not decisions:
         return {
@@ -232,9 +276,10 @@ def _hit_rate(model_version: str, horizon_group: str) -> dict[str, Any]:
         "hit_rate": round(hits / decisions, 3),
         "baseline": 0.333,
         "note": (
-            f"Of {decisions:,} recommendations at this horizon, {hits:,} landed in "
-            f"the cleanest third of their feasible window. Picking at random would "
-            f"land there 33.3% of the time."
+            f"Of {decisions:,} past {duration_hours:g}h recommendations within "
+            f"{within_hours:g}h at this horizon, {hits:,} landed in the cleanest "
+            f"third of their feasible windows. Picking at random would land there "
+            f"about a third of the time."
         ),
     }
 
@@ -292,12 +337,8 @@ def plan(
         "stale": stale,
     }
     search_start = _current_period_start(now)
-    search_end = search_start + timedelta(hours=within_hours)
     window_size = max(1, int(duration_hours * 2))
-    periods = sorted(
-        (p for p in horizons if search_start <= p["target_sp_start_utc"] < search_end),
-        key=lambda p: p["target_sp_start_utc"],
-    )
+    periods = _search_periods(horizons, now, within_hours)
     windows = _window_means(periods, window_size)
 
     if not windows:
@@ -332,12 +373,14 @@ def plan(
         else None
     )
 
-    # "Average" counterfactual: mean of ALL periods in the search window.
+    # "Average" counterfactual: the mean over every feasible window start.
     #
     # This is the expected value of choosing a feasible start uniformly at
     # random, which is the honest baseline: it is what a user gets by not
-    # thinking about it.
-    all_mean = sum(float(p["point_gco2_kwh"]) for p in periods) / len(periods)
+    # thinking about it. It is the mean of window means, not of periods — the
+    # two differ whenever gaps break some windows up, or the edges of the
+    # search are counted in fewer windows than its middle.
+    all_mean = sum(mean for _, mean in windows) / len(windows)
 
     # "Overnight" counterfactual: 03:00 local, the folk heuristic.
     #
@@ -407,7 +450,7 @@ def plan(
 
     confidence: dict[str, Any] = {
         "horizon_group": group,
-        "hit_rate": _hit_rate(model_version, group),
+        "hit_rate": _hit_rate(model_version, group, duration_hours, within_hours),
     }
     if group_accuracy:
         confidence["mae_gco2_kwh"] = float(group_accuracy["mae"])
