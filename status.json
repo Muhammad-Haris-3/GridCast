@@ -1,0 +1,127 @@
+{
+  "snapshot": {
+    "name": "status",
+    "captured_at_utc": "2026-10-11T02:02:03.483549+00:00",
+    "commit": "d223be5a2faf381651c73ea62d45d5df1c4031a2",
+    "params": null
+  },
+  "payload": {
+    "reported_by": "pipeline",
+    "env": null,
+    "commit": "d223be5a2faf381651c73ea62d45d5df1c4031a2",
+    "milestone": "M9 \u2014 operational resilience",
+    "serving_host": null,
+    "database": "ok",
+    "readonly_role_in_use": null,
+    "warnings": [],
+    "spine": {
+      "periods": 150576,
+      "first_period_utc": "2018-05-09T00:00:00+00:00",
+      "last_period_utc": "2026-12-09T23:30:00+00:00"
+    },
+    "recent_runs": [
+      {
+        "source": "om_forecast",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T02:01:20.199507+00:00",
+        "finished_at_utc": "2026-10-11T02:01:25.048032+00:00",
+        "rows_read": 864,
+        "rows_written": 0
+      },
+      {
+        "source": "ex_demand",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T02:01:17.235262+00:00",
+        "finished_at_utc": "2026-10-11T02:01:19.585347+00:00",
+        "rows_read": 102,
+        "rows_written": 1
+      },
+      {
+        "source": "ci_genmix",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T02:01:13.761183+00:00",
+        "finished_at_utc": "2026-10-11T02:01:16.618210+00:00",
+        "rows_read": 192,
+        "rows_written": 99
+      },
+      {
+        "source": "ci_intensity",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T02:01:10.735290+00:00",
+        "finished_at_utc": "2026-10-11T02:01:13.133766+00:00",
+        "rows_read": 192,
+        "rows_written": 90
+      },
+      {
+        "source": "om_forecast",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:31:17.328691+00:00",
+        "finished_at_utc": "2026-10-11T01:31:21.025591+00:00",
+        "rows_read": 864,
+        "rows_written": 311
+      },
+      {
+        "source": "ex_demand",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:31:13.640855+00:00",
+        "finished_at_utc": "2026-10-11T01:31:16.870011+00:00",
+        "rows_read": 101,
+        "rows_written": 1
+      },
+      {
+        "source": "ci_genmix",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:31:04.066561+00:00",
+        "finished_at_utc": "2026-10-11T01:31:13.158949+00:00",
+        "rows_read": 193,
+        "rows_written": 99
+      },
+      {
+        "source": "ci_intensity",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:31:01.468528+00:00",
+        "finished_at_utc": "2026-10-11T01:31:03.590211+00:00",
+        "rows_read": 193,
+        "rows_written": 84
+      },
+      {
+        "source": "om_forecast",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:01:35.477781+00:00",
+        "finished_at_utc": "2026-10-11T01:01:54.932474+00:00",
+        "rows_read": 864,
+        "rows_written": 162
+      },
+      {
+        "source": "ex_demand",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-11T01:01:34.070598+00:00",
+        "finished_at_utc": "2026-10-11T01:01:35.299874+00:00",
+        "rows_read": 100,
+        "rows_written": 1
+      }
+    ],
+    "transfer": {
+      "period_start_utc": "2026-10-01T00:00:00+00:00",
+      "bytes_estimated": 570682851,
+      "bytes_estimated_human": "544.2 MB",
+      "budget_bytes": 5368709120,
+      "budget_human": "5.0 GB",
+      "fraction_used": 0.1063,
+      "rows_returned": 9104410,
+      "runs_recorded": 2368,
+      "state": "ok",
+      "estimate_note": "Measured from the width of returned values, not from the wire. It will disagree with the provider's figure; it exists to make a regression visible, not to say how much allowance is left."
+    }
+  }
+}

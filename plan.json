@@ -1,0 +1,19 @@
+{
+  "snapshot": {
+    "name": "plan",
+    "captured_at_utc": "2026-10-11T02:02:03.483549+00:00",
+    "commit": "d223be5a2faf381651c73ea62d45d5df1c4031a2",
+    "params": {
+      "duration_hours": 2.0,
+      "within_hours": 24.0,
+      "appliance_kwh": 1.4
+    }
+  },
+  "payload": {
+    "model_version": "B1_seasonal_naive_q_v1",
+    "run_at_utc": "2026-10-05T01:31:21.553820+00:00",
+    "forecast_age_minutes": 8670,
+    "stale": true,
+    "detail": "not enough forecast periods: the latest forecast was issued at 2026-10-05T01:31:21.553820+00:00 and does not cover the next 24.0h \u2014 the pipeline may have stalled"
+  }
+}
