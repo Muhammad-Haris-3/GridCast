@@ -8,6 +8,7 @@ import {
   Public_Sans,
   IBM_Plex_Mono,
 } from "next/font/google";
+import { load } from "@/lib/snapshot";
 import NavLinks from "./NavLinks";
 import ThemeToggle, { THEME_INIT } from "./ThemeToggle";
 import "./globals.css";
@@ -76,9 +77,16 @@ export const metadata: Metadata = {
     "Half-hourly GB grid carbon intensity forecasts, published before the outcome exists and scored automatically once the actual arrives.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // From the forecast's own issue time, not the snapshot's capture time: the
+  // snapshot is republished every run even when issuing fails, which is how
+  // this said "live" through twelve days without a forecast in October 2026.
+  const forecast = await load<{ run_at_utc: string | null }>("forecast_current");
+  const issuedAt = forecast?.data.run_at_utc;
+  const live =
+    issuedAt != null && Date.now() - new Date(issuedAt).getTime() <= 90 * 60 * 1000;
   return (
     // data-theme is rendered as "dark" rather than left off: every rule in
     // globals.css is scoped to a theme, so an unset attribute would serve an
@@ -115,10 +123,10 @@ export default function RootLayout({
           </div>
           <NavLinks />
           <div className="header-tail">
-            <div className="header-status">
+            <Link href="/status" className={live ? "header-status" : "header-status stalled"}>
               <i />
-              <span>pipeline live</span>
-            </div>
+              <span>{live ? "pipeline live" : "pipeline stalled"}</span>
+            </Link>
             <ThemeToggle />
           </div>
         </header>

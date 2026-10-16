@@ -2027,3 +2027,9 @@ html {
   background: var(--warn-tint);
   color: var(--warn-deep);
 }
+
+/* The header dot goes amber when the latest forecast is older than three runs. */
+:root[data-theme] .header-status.stalled i {
+  background: var(--warn);
+  animation: none;
+}
