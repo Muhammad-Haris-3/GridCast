@@ -185,6 +185,22 @@ def test_unchanged_payload_writes_nothing_on_reingest(clean_probe_window) -> Non
 
 
 @pytest_db
+def test_a_record_repeated_within_one_batch_lands_once(clean_probe_window) -> None:
+    """NOT EXISTS sees stored rows, not the rest of the VALUES list. A response
+    repeating a record landed it twice, and the duplicate key in
+    fct_demand_period stopped forecasting from 2026-10-05 to 2026-10-17."""
+    start = clean_probe_window
+    record = Record(key={"sp_start_utc": start}, payload={"intensity": {"actual": 100}})
+
+    from gridcast.db import connect
+
+    with connect() as conn:
+        written = write_records(conn, PROBE, [record, record], run_id=uuid.uuid4())
+
+    assert written == 1
+
+
+@pytest_db
 def test_a_revision_is_a_new_row_and_the_old_one_survives(clean_probe_window) -> None:
     """FR-9. History is preserved by the same mechanism that gives idempotency."""
     start = clean_probe_window

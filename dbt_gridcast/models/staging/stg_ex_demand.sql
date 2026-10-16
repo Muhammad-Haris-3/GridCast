@@ -13,8 +13,18 @@
     and p99, tailing to 312 minutes, with exactly one vintage per period so far.
     The vintage stays in the grain regardless: INDO is explicitly an *initial*
     outturn, and later settlement runs are expected.
+
+    The grain is enforced here, not assumed. On 2026-10-05 landing first held
+    two rows for one (period, publish time), the unique test on
+    fct_demand_period failed, and every run after it skipped issuing forecasts
+    for twelve days. Landing can legitimately hold that: a payload changed
+    without a new publishTime is stored as a revision. The LATEST fetch wins,
+    with its own fetched_at as knowable_at, which can only make a value
+    knowable later than it was, never earlier, so it cannot leak.
 */
 
+select distinct on (sp_start_utc, publish_time_utc) *
+from (
 select
     (payload ->> 'startTime')::timestamptz   as sp_start_utc,
     (payload ->> 'publishTime')::timestamptz as publish_time_utc,
@@ -29,3 +39,5 @@ select
     landing_id
 
 from {{ source('landing', 'lnd_ex_demand') }}
+) landed
+order by sp_start_utc, publish_time_utc, knowable_at_utc desc, landing_id desc

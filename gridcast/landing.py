@@ -40,6 +40,11 @@ def write_records(
     Returns the number of rows actually written, which is normally far below
     the number read. That gap is the mechanism working, not data loss.
     """
+    # The NOT EXISTS below compares against rows already stored, never against
+    # the other rows in this same VALUES list. A response that repeats a record
+    # would land it twice in one statement, so exact repeats go here.
+    records = list({(tuple(r.key[n] for n in spec.key_names), r.payload_hash): r
+                    for r in records}.values())
     if not records:
         return 0
 
