@@ -1,0 +1,454 @@
+{
+  "snapshot": {
+    "name": "plan",
+    "captured_at_utc": "2026-10-17T21:02:24.854663+00:00",
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "params": {
+      "duration_hours": 2.0,
+      "within_hours": 24.0,
+      "appliance_kwh": 1.4
+    }
+  },
+  "payload": {
+    "model_version": "B1_seasonal_naive_q_v1",
+    "run_at_utc": "2026-10-17T21:02:06.440205+00:00",
+    "forecast_age_minutes": 0,
+    "stale": false,
+    "search_window_hours": 24.0,
+    "duration_hours": 2.0,
+    "appliance_kwh": 1.4,
+    "best_window": {
+      "start_utc": "2026-10-18T10:30:00+00:00",
+      "end_utc": "2026-10-18T12:00:00+00:00",
+      "mean_gco2_kwh": 74.0,
+      "periods": [
+        {
+          "target_sp_start_utc": "2026-10-18T10:30:00+00:00",
+          "horizon_periods": 27,
+          "point_gco2_kwh": 75.0,
+          "q10_gco2_kwh": 5.0,
+          "q90_gco2_kwh": 144.0
+        },
+        {
+          "target_sp_start_utc": "2026-10-18T11:00:00+00:00",
+          "horizon_periods": 28,
+          "point_gco2_kwh": 75.0,
+          "q10_gco2_kwh": 5.0,
+          "q90_gco2_kwh": 144.0
+        },
+        {
+          "target_sp_start_utc": "2026-10-18T11:30:00+00:00",
+          "horizon_periods": 29,
+          "point_gco2_kwh": 71.0,
+          "q10_gco2_kwh": 1.0,
+          "q90_gco2_kwh": 140.0
+        },
+        {
+          "target_sp_start_utc": "2026-10-18T12:00:00+00:00",
+          "horizon_periods": 30,
+          "point_gco2_kwh": 75.0,
+          "q10_gco2_kwh": 5.0,
+          "q90_gco2_kwh": 144.0
+        }
+      ],
+      "horizon_group": "H3",
+      "min_horizon": 27,
+      "max_horizon": 30
+    },
+    "counterfactuals": {
+      "now": {
+        "mean_gco2_kwh": 150.0,
+        "note": "Running immediately. Flatters the tool whenever now happens to be dirty.",
+        "saving_gco2_kwh": 76.0,
+        "saving_pct": 50.7,
+        "co2_saved_g": 106.4,
+        "saving_gco2_kwh_range": [
+          -63.0,
+          215.0
+        ],
+        "co2_saved_g_range": [
+          -88.2,
+          301.0
+        ],
+        "could_be_worse": true
+      },
+      "average": {
+        "mean_gco2_kwh": 131.8,
+        "note": "The expected result of picking a feasible time at random \u2014 what you get by not thinking about it. The honest baseline.",
+        "saving_gco2_kwh": 57.8,
+        "saving_pct": 43.9,
+        "co2_saved_g": 81.0
+      },
+      "overnight": {
+        "mean_gco2_kwh": 148.0,
+        "start_utc": "2026-10-18T02:00:00+00:00",
+        "end_utc": "2026-10-18T03:30:00+00:00",
+        "note": "03:00 local, the folk heuristic. On a wind-driven grid the cleanest hours are often not overnight, so this can be negative.",
+        "saving_gco2_kwh": 74.0,
+        "saving_pct": 50.0,
+        "co2_saved_g": 103.6,
+        "saving_gco2_kwh_range": [
+          -65.0,
+          213.0
+        ],
+        "co2_saved_g_range": [
+          -91.0,
+          298.2
+        ],
+        "could_be_worse": true
+      }
+    },
+    "upper_bound": {
+      "mean_gco2_kwh": 170.5,
+      "start_utc": "2026-10-18T18:00:00+00:00",
+      "end_utc": "2026-10-18T19:30:00+00:00",
+      "saving_gco2_kwh": 96.5,
+      "note": "The dirtiest feasible window. Reported as a bound, NOT a counterfactual: nobody deliberately runs a load at the worst hour, so a saving measured against it is not a saving anyone would actually make."
+    },
+    "all_periods": [
+      {
+        "target_sp_start_utc": "2026-10-17T21:30:00+00:00",
+        "horizon_periods": 1,
+        "point_gco2_kwh": 159.0,
+        "q10_gco2_kwh": 89.0,
+        "q90_gco2_kwh": 228.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-17T22:00:00+00:00",
+        "horizon_periods": 2,
+        "point_gco2_kwh": 155.0,
+        "q10_gco2_kwh": 85.0,
+        "q90_gco2_kwh": 224.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-17T22:30:00+00:00",
+        "horizon_periods": 3,
+        "point_gco2_kwh": 146.0,
+        "q10_gco2_kwh": 76.0,
+        "q90_gco2_kwh": 215.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-17T23:00:00+00:00",
+        "horizon_periods": 4,
+        "point_gco2_kwh": 140.0,
+        "q10_gco2_kwh": 70.0,
+        "q90_gco2_kwh": 209.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-17T23:30:00+00:00",
+        "horizon_periods": 5,
+        "point_gco2_kwh": 138.0,
+        "q10_gco2_kwh": 68.0,
+        "q90_gco2_kwh": 207.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T00:00:00+00:00",
+        "horizon_periods": 6,
+        "point_gco2_kwh": 139.0,
+        "q10_gco2_kwh": 69.0,
+        "q90_gco2_kwh": 208.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T00:30:00+00:00",
+        "horizon_periods": 7,
+        "point_gco2_kwh": 138.0,
+        "q10_gco2_kwh": 68.0,
+        "q90_gco2_kwh": 207.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T01:00:00+00:00",
+        "horizon_periods": 8,
+        "point_gco2_kwh": 135.0,
+        "q10_gco2_kwh": 65.0,
+        "q90_gco2_kwh": 204.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T01:30:00+00:00",
+        "horizon_periods": 9,
+        "point_gco2_kwh": 136.0,
+        "q10_gco2_kwh": 66.0,
+        "q90_gco2_kwh": 205.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T02:00:00+00:00",
+        "horizon_periods": 10,
+        "point_gco2_kwh": 140.0,
+        "q10_gco2_kwh": 70.0,
+        "q90_gco2_kwh": 209.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T02:30:00+00:00",
+        "horizon_periods": 11,
+        "point_gco2_kwh": 149.0,
+        "q10_gco2_kwh": 79.0,
+        "q90_gco2_kwh": 218.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T03:00:00+00:00",
+        "horizon_periods": 12,
+        "point_gco2_kwh": 152.0,
+        "q10_gco2_kwh": 82.0,
+        "q90_gco2_kwh": 221.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T03:30:00+00:00",
+        "horizon_periods": 13,
+        "point_gco2_kwh": 151.0,
+        "q10_gco2_kwh": 81.0,
+        "q90_gco2_kwh": 220.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T04:00:00+00:00",
+        "horizon_periods": 14,
+        "point_gco2_kwh": 144.0,
+        "q10_gco2_kwh": 74.0,
+        "q90_gco2_kwh": 213.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T04:30:00+00:00",
+        "horizon_periods": 15,
+        "point_gco2_kwh": 143.0,
+        "q10_gco2_kwh": 73.0,
+        "q90_gco2_kwh": 212.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T05:00:00+00:00",
+        "horizon_periods": 16,
+        "point_gco2_kwh": 158.0,
+        "q10_gco2_kwh": 88.0,
+        "q90_gco2_kwh": 227.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T05:30:00+00:00",
+        "horizon_periods": 17,
+        "point_gco2_kwh": 168.0,
+        "q10_gco2_kwh": 98.0,
+        "q90_gco2_kwh": 237.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T06:00:00+00:00",
+        "horizon_periods": 18,
+        "point_gco2_kwh": 174.0,
+        "q10_gco2_kwh": 104.0,
+        "q90_gco2_kwh": 243.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T06:30:00+00:00",
+        "horizon_periods": 19,
+        "point_gco2_kwh": 165.0,
+        "q10_gco2_kwh": 95.0,
+        "q90_gco2_kwh": 234.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T07:00:00+00:00",
+        "horizon_periods": 20,
+        "point_gco2_kwh": 167.0,
+        "q10_gco2_kwh": 97.0,
+        "q90_gco2_kwh": 236.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T07:30:00+00:00",
+        "horizon_periods": 21,
+        "point_gco2_kwh": 156.0,
+        "q10_gco2_kwh": 86.0,
+        "q90_gco2_kwh": 225.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T08:00:00+00:00",
+        "horizon_periods": 22,
+        "point_gco2_kwh": 138.0,
+        "q10_gco2_kwh": 68.0,
+        "q90_gco2_kwh": 207.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T08:30:00+00:00",
+        "horizon_periods": 23,
+        "point_gco2_kwh": 111.0,
+        "q10_gco2_kwh": 41.0,
+        "q90_gco2_kwh": 180.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T09:00:00+00:00",
+        "horizon_periods": 24,
+        "point_gco2_kwh": 93.0,
+        "q10_gco2_kwh": 23.0,
+        "q90_gco2_kwh": 162.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T09:30:00+00:00",
+        "horizon_periods": 25,
+        "point_gco2_kwh": 84.0,
+        "q10_gco2_kwh": 14.0,
+        "q90_gco2_kwh": 153.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T10:00:00+00:00",
+        "horizon_periods": 26,
+        "point_gco2_kwh": 80.0,
+        "q10_gco2_kwh": 10.0,
+        "q90_gco2_kwh": 149.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T10:30:00+00:00",
+        "horizon_periods": 27,
+        "point_gco2_kwh": 75.0,
+        "q10_gco2_kwh": 5.0,
+        "q90_gco2_kwh": 144.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T11:00:00+00:00",
+        "horizon_periods": 28,
+        "point_gco2_kwh": 75.0,
+        "q10_gco2_kwh": 5.0,
+        "q90_gco2_kwh": 144.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T11:30:00+00:00",
+        "horizon_periods": 29,
+        "point_gco2_kwh": 71.0,
+        "q10_gco2_kwh": 1.0,
+        "q90_gco2_kwh": 140.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T12:00:00+00:00",
+        "horizon_periods": 30,
+        "point_gco2_kwh": 75.0,
+        "q10_gco2_kwh": 5.0,
+        "q90_gco2_kwh": 144.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T12:30:00+00:00",
+        "horizon_periods": 31,
+        "point_gco2_kwh": 78.0,
+        "q10_gco2_kwh": 8.0,
+        "q90_gco2_kwh": 147.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T13:00:00+00:00",
+        "horizon_periods": 32,
+        "point_gco2_kwh": 76.0,
+        "q10_gco2_kwh": 6.0,
+        "q90_gco2_kwh": 145.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T13:30:00+00:00",
+        "horizon_periods": 33,
+        "point_gco2_kwh": 80.0,
+        "q10_gco2_kwh": 10.0,
+        "q90_gco2_kwh": 149.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T14:00:00+00:00",
+        "horizon_periods": 34,
+        "point_gco2_kwh": 89.0,
+        "q10_gco2_kwh": 19.0,
+        "q90_gco2_kwh": 158.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T14:30:00+00:00",
+        "horizon_periods": 35,
+        "point_gco2_kwh": 119.0,
+        "q10_gco2_kwh": 49.0,
+        "q90_gco2_kwh": 188.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T15:00:00+00:00",
+        "horizon_periods": 36,
+        "point_gco2_kwh": 131.0,
+        "q10_gco2_kwh": 61.0,
+        "q90_gco2_kwh": 200.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T15:30:00+00:00",
+        "horizon_periods": 37,
+        "point_gco2_kwh": 149.0,
+        "q10_gco2_kwh": 79.0,
+        "q90_gco2_kwh": 218.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T16:00:00+00:00",
+        "horizon_periods": 38,
+        "point_gco2_kwh": 138.0,
+        "q10_gco2_kwh": 68.0,
+        "q90_gco2_kwh": 207.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T16:30:00+00:00",
+        "horizon_periods": 39,
+        "point_gco2_kwh": 170.0,
+        "q10_gco2_kwh": 100.0,
+        "q90_gco2_kwh": 239.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T17:00:00+00:00",
+        "horizon_periods": 40,
+        "point_gco2_kwh": 150.0,
+        "q10_gco2_kwh": 80.0,
+        "q90_gco2_kwh": 219.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T17:30:00+00:00",
+        "horizon_periods": 41,
+        "point_gco2_kwh": 151.0,
+        "q10_gco2_kwh": 81.0,
+        "q90_gco2_kwh": 220.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T18:00:00+00:00",
+        "horizon_periods": 42,
+        "point_gco2_kwh": 172.0,
+        "q10_gco2_kwh": 102.0,
+        "q90_gco2_kwh": 241.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T18:30:00+00:00",
+        "horizon_periods": 43,
+        "point_gco2_kwh": 169.0,
+        "q10_gco2_kwh": 99.0,
+        "q90_gco2_kwh": 238.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T19:00:00+00:00",
+        "horizon_periods": 44,
+        "point_gco2_kwh": 167.0,
+        "q10_gco2_kwh": 97.0,
+        "q90_gco2_kwh": 236.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T19:30:00+00:00",
+        "horizon_periods": 45,
+        "point_gco2_kwh": 174.0,
+        "q10_gco2_kwh": 104.0,
+        "q90_gco2_kwh": 243.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T20:00:00+00:00",
+        "horizon_periods": 46,
+        "point_gco2_kwh": 170.0,
+        "q10_gco2_kwh": 100.0,
+        "q90_gco2_kwh": 239.0
+      },
+      {
+        "target_sp_start_utc": "2026-10-18T20:30:00+00:00",
+        "horizon_periods": 47,
+        "point_gco2_kwh": 98.0,
+        "q10_gco2_kwh": 28.0,
+        "q90_gco2_kwh": 167.0
+      }
+    ],
+    "confidence": {
+      "horizon_group": "H3",
+      "hit_rate": {
+        "available": true,
+        "decisions": 280,
+        "hits": 215,
+        "hit_rate": 0.768,
+        "baseline": 0.333,
+        "note": "Of 280 past 2h recommendations within 24h at this horizon, 215 landed in the cleanest third of their feasible windows. Picking at random would land there about a third of the time."
+      },
+      "mae_gco2_kwh": 44.549,
+      "n": 13607,
+      "note": "At this horizon (H3), the model's mean absolute error is 44.549 gCO\u2082/kWh over 13,607 scored points."
+    }
+  }
+}
