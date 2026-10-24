@@ -1,0 +1,127 @@
+{
+  "snapshot": {
+    "name": "status",
+    "captured_at_utc": "2026-10-24T19:19:56.785617+00:00",
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "params": null
+  },
+  "payload": {
+    "reported_by": "pipeline",
+    "env": null,
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "milestone": "M9 \u2014 operational resilience",
+    "serving_host": null,
+    "database": "ok",
+    "readonly_role_in_use": null,
+    "warnings": [],
+    "spine": {
+      "periods": 151200,
+      "first_period_utc": "2018-05-09T00:00:00+00:00",
+      "last_period_utc": "2026-12-22T23:30:00+00:00"
+    },
+    "recent_runs": [
+      {
+        "source": "G2_gbm_v1",
+        "job": "forecast",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:50.549958+00:00",
+        "finished_at_utc": "2026-10-24T19:19:54.062693+00:00",
+        "rows_read": 96,
+        "rows_written": 96
+      },
+      {
+        "source": "ESO_published",
+        "job": "forecast",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:46.389287+00:00",
+        "finished_at_utc": "2026-10-24T19:19:50.329284+00:00",
+        "rows_read": 95,
+        "rows_written": 95
+      },
+      {
+        "source": "B0_persistence_v1",
+        "job": "forecast",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:42.694814+00:00",
+        "finished_at_utc": "2026-10-24T19:19:46.083610+00:00",
+        "rows_read": 96,
+        "rows_written": 96
+      },
+      {
+        "source": "B1_seasonal_naive_q_v1",
+        "job": "forecast",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:39.065711+00:00",
+        "finished_at_utc": "2026-10-24T19:19:42.423689+00:00",
+        "rows_read": 96,
+        "rows_written": 96
+      },
+      {
+        "source": "om_forecast",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:06.395037+00:00",
+        "finished_at_utc": "2026-10-24T19:19:09.141441+00:00",
+        "rows_read": 864,
+        "rows_written": 0
+      },
+      {
+        "source": "ex_demand",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:05.020450+00:00",
+        "finished_at_utc": "2026-10-24T19:19:06.139238+00:00",
+        "rows_read": 136,
+        "rows_written": 0
+      },
+      {
+        "source": "ci_genmix",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:02.498520+00:00",
+        "finished_at_utc": "2026-10-24T19:19:04.721994+00:00",
+        "rows_read": 192,
+        "rows_written": 98
+      },
+      {
+        "source": "ci_intensity",
+        "job": "ingest",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:19:00.588081+00:00",
+        "finished_at_utc": "2026-10-24T19:19:02.179853+00:00",
+        "rows_read": 192,
+        "rows_written": 84
+      },
+      {
+        "source": "register",
+        "job": "score",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:02:40.125084+00:00",
+        "finished_at_utc": "2026-10-24T19:02:42.124261+00:00",
+        "rows_read": 427,
+        "rows_written": 427
+      },
+      {
+        "source": "G2_gbm_v1",
+        "job": "forecast",
+        "status": "success",
+        "started_at_utc": "2026-10-24T19:02:30.518918+00:00",
+        "finished_at_utc": "2026-10-24T19:02:37.413571+00:00",
+        "rows_read": 96,
+        "rows_written": 96
+      }
+    ],
+    "transfer": {
+      "period_start_utc": "2026-10-01T00:00:00+00:00",
+      "bytes_estimated": 1746191493,
+      "bytes_estimated_human": "1.6 GB",
+      "budget_bytes": 5368709120,
+      "budget_human": "5.0 GB",
+      "fraction_used": 0.3253,
+      "rows_returned": 27721859,
+      "runs_recorded": 5783,
+      "state": "ok",
+      "estimate_note": "Measured from the width of returned values, not from the wire. It will disagree with the provider's figure; it exists to make a regression visible, not to say how much allowance is left."
+    }
+  }
+}
