@@ -1,0 +1,68 @@
+{
+  "snapshot": {
+    "name": "integrity",
+    "captured_at_utc": "2026-10-31T18:02:47.670544+00:00",
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "params": null
+  },
+  "payload": {
+    "serving_host": "ep-sweet-unit-ay0ookfd-pooler.c-5.us-east-2.aws.neon.tech/neondb",
+    "register": {
+      "forecasts": 526078,
+      "models": 4,
+      "first_issued": "2026-08-12T19:22:49.564801+00:00",
+      "last_issued": "2026-10-31T18:02:05.295545+00:00"
+    },
+    "scored": 475448,
+    "seals": [
+      {
+        "period_month": "2026-09-01",
+        "row_count": 117045,
+        "sealed_at_utc": "2026-10-01T10:39:39.237230+00:00"
+      },
+      {
+        "period_month": "2026-08-01",
+        "row_count": 23549,
+        "sealed_at_utc": "2026-09-02T08:18:16.869624+00:00"
+      }
+    ],
+    "recent_audits": [
+      {
+        "checked_at_utc": "2026-10-31T10:07:31.359431+00:00",
+        "period_month": "2026-09-01",
+        "passed": true,
+        "expected_count": 117045,
+        "observed_count": 117045
+      },
+      {
+        "checked_at_utc": "2026-10-31T10:07:29.924695+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-10-30T10:41:15.713777+00:00",
+        "period_month": "2026-09-01",
+        "passed": true,
+        "expected_count": 117045,
+        "observed_count": 117045
+      },
+      {
+        "checked_at_utc": "2026-10-30T10:41:14.376462+00:00",
+        "period_month": "2026-08-01",
+        "passed": true,
+        "expected_count": 23549,
+        "observed_count": 23549
+      },
+      {
+        "checked_at_utc": "2026-10-29T10:39:19.223821+00:00",
+        "period_month": "2026-09-01",
+        "passed": true,
+        "expected_count": 117045,
+        "observed_count": 117045
+      }
+    ],
+    "guarantee": "The application role holds INSERT on the forecast register and has no UPDATE or DELETE. Closed months are hashed and the hash is committed to git, so the live database can be checked against a public history."
+  }
+}
