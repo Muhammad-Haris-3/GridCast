@@ -1,0 +1,18 @@
+{
+  "captured_at_utc": "2026-11-14T20:31:14.291476+00:00",
+  "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+  "files": {
+    "status": {
+      "captured_at_utc": "2026-11-14T20:31:14.291476+00:00"
+    }
+  },
+  "failed": {
+    "forecast_current": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "accuracy": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "leaderboard": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "models": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "integrity": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits.",
+    "plan": "OperationalError: connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits."
+  },
+  "note": "Derived cache of the serving payloads, rebuilt every pipeline run. The forecast register and the monthly seals are the record; this is not."
+}

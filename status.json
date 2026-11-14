@@ -1,0 +1,26 @@
+{
+  "snapshot": {
+    "name": "status",
+    "captured_at_utc": "2026-11-14T20:31:14.291476+00:00",
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "params": null
+  },
+  "payload": {
+    "reported_by": "pipeline",
+    "env": null,
+    "commit": "6c1c3dbf34565c3448a7ef618c289fbd5b9ef67a",
+    "milestone": "M9 \u2014 operational resilience",
+    "serving_host": null,
+    "database": "unreachable",
+    "readonly_role_in_use": null,
+    "warnings": [
+      "Neon refused the connection on a plan limit, without naming which one. Check the project's usage in the Neon console. Retrying will not clear it and the URL is not at fault."
+    ],
+    "spine": null,
+    "recent_runs": [],
+    "transfer": null,
+    "detail": "OperationalError",
+    "diagnosis": "Neon refused the connection on a plan limit, without naming which one. Check the project's usage in the Neon console. Retrying will not clear it and the URL is not at fault.",
+    "driver_message": "connection failed: connection to server at <name>, port <port> failed: ERROR: Your account or project has exceeded the quota. Upgrade your plan to increase limits."
+  }
+}
