@@ -48,7 +48,7 @@ from api.routers import plan as plan_router
 from api.routers import status as status_router
 from api.routers.status import _redact
 from gridcast.config import get_settings
-from gridcast.usage import record_on_exit
+from gridcast.usage import record_on_exit, should_decline
 
 SNAPSHOT_DIR = Path(__file__).resolve().parent.parent / "snapshots"
 
@@ -251,6 +251,13 @@ def main() -> int:
         help="Directory to write the JSON files into (default: snapshots/)",
     )
     args = parser.parse_args()
+
+    # The published files are a cache the frontend already shows with their
+    # age, so near the end of the allowance they can wait a day. Running out
+    # stops the site outright; a day-old panel does not.
+    if should_decline("snapshot"):
+        print("snapshots skipped; the published files stay as they are")
+        return 0
 
     settings = get_settings()
     print(f"database: {settings.serving_host}")

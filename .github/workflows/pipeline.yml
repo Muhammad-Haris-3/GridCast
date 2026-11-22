@@ -1,6 +1,9 @@
 name: Pipeline
 
-# Every 30 minutes, matching the settlement period.
+# Hourly. Every 30 minutes matched the settlement period, but spent Neon's
+# monthly transfer allowance by the 13th or 14th (October, November 2026). Each
+# run still forecasts all 96 periods ahead, so no period goes unforecast; only
+# the shortest horizon is sampled half as often.
 #
 # GitHub's cron is best-effort: runs are delayed under load and skipped
 # entirely when the platform is busy. That is not worked around, because it
@@ -9,7 +12,7 @@ name: Pipeline
 # not punctuality.
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 # A delayed run must never overlap the next one. Two ingestions writing the same

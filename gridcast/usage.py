@@ -49,8 +49,14 @@ FREE_TIER_BUDGET_BYTES = 5 * 1024**3
 # Two thresholds because they are two different decisions: the first asks a
 # human to look, the second stops the pipeline spending what is left on work
 # that can wait a day.
-WARN_FRACTION = 0.75
-DECLINE_FRACTION = 0.90
+#
+# Set against the provider's own cutoff, not against the estimate's face value.
+# On 2026-11-14 Neon refused every connection while this estimate read 74.8%,
+# so a 90% stand-down never fired and the whole month after the 14th was lost,
+# as October's was after the 13th. The estimate is still not calibrated; these
+# thresholds are where it has actually been when the real allowance ran out.
+WARN_FRACTION = 0.45
+DECLINE_FRACTION = 0.60
 
 # Per-row protocol overhead: a DataRow message header plus a length prefix per
 # field. Close enough to the real framing to keep the estimate honest at the
